@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Secret Garden",
+  title: "Four Seasons Garden",
   description: "A whimsical interactive garden ecosystem",
 };
 
