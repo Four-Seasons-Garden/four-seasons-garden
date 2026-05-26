@@ -58,9 +58,9 @@ function useHourlyWeather(biomeId: string, range: RangeId) {
   useEffect(() => {
     let active = true;
 
-    async function load() {
+    async function load(markLoading = false) {
       try {
-        setStatus("loading");
+        if (markLoading) setStatus("loading");
         const response = await fetch(`/api/weather/hourly?biome=${biomeId}&range=${range}`);
         const result = (await response.json()) as HourlyPayload;
         if (!response.ok) throw new Error(result.error ?? "Unable to load hourly weather.");
@@ -74,8 +74,8 @@ function useHourlyWeather(biomeId: string, range: RangeId) {
       }
     }
 
-    load();
-    const refresh = window.setInterval(load, 15 * 60 * 1000);
+    load(true);
+    const refresh = window.setInterval(() => load(false), 15 * 60 * 1000);
 
     return () => {
       active = false;
@@ -86,12 +86,206 @@ function useHourlyWeather(biomeId: string, range: RangeId) {
   return { payload, status };
 }
 
-function formatHour(value: string) {
+function fahrenheitToCelsius(value: number) {
+  return (value - 32) * 5 / 9;
+}
+
+function inchesToMillimeters(value: number) {
+  return value * 25.4;
+}
+
+function mphToKph(value: number) {
+  return value * 1.609344;
+}
+
+function formatCelsius(valueF: number) {
+  return `${Math.round(fahrenheitToCelsius(valueF))}°C`;
+}
+
+function formatMillimeters(valueIn: number) {
+  const millimeters = inchesToMillimeters(valueIn);
+  return `${millimeters.toFixed(millimeters >= 10 ? 1 : 2)} mm`;
+}
+
+function formatTemperaturePair(valueF: number) {
+  return `${formatTemperature(valueF)} / ${formatCelsius(valueF)}`;
+}
+
+function formatInchesPair(valueIn: number) {
+  return `${formatInches(valueIn)} / ${formatMillimeters(valueIn)}`;
+}
+
+function formatWindPair(valueMph: number) {
+  return `${Math.round(valueMph)} mph / ${Math.round(mphToKph(valueMph))} km/h`;
+}
+
+function formatStatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+type AxisTick = {
+  time: number;
+  primary: string;
+  secondary: string;
+};
+
+function parseLocalTimestamp(value: string) {
+  const [date = "", time = ""] = value.split("T");
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour = 0, minute = 0, second = 0] = time.split(":").map(Number);
+  return Date.UTC(year, month - 1, day, hour, minute, second);
+}
+
+function localParts(timestamp: number) {
+  const date = new Date(timestamp);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth(),
+    day: date.getUTCDate(),
+    hour: date.getUTCHours(),
+    weekday: date.getUTCDay(),
+  };
+}
+
+function formatAxisHour(hour: number) {
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}${period}`;
+}
+
+function formatMonthDay(timestamp: number) {
+  const parts = localParts(timestamp);
+  return `${MONTH_LABELS[parts.month]} ${parts.day}`;
+}
+
+function formatAxisLabel(timestamp: number, range: RangeId): Omit<AxisTick, "time"> {
+  const parts = localParts(timestamp);
+
+  if (range === "day") {
+    return {
+      primary: formatAxisHour(parts.hour),
+      secondary: formatMonthDay(timestamp),
+    };
+  }
+
+  if (range === "week") {
+    return {
+      primary: `${WEEKDAY_LABELS[parts.weekday]} ${formatMonthDay(timestamp)}`,
+      secondary: formatAxisHour(parts.hour),
+    };
+  }
+
+  if (range === "month") {
+    return {
+      primary: formatMonthDay(timestamp),
+      secondary: formatAxisHour(parts.hour),
+    };
+  }
+
+  return {
+    primary: MONTH_LABELS[parts.month],
+    secondary: `${parts.year}`,
+  };
+}
+
+function addUniqueTick(ticks: number[], value: number, start: number, end: number) {
+  if (value < start || value > end) return;
+  if (!ticks.some((tick) => Math.abs(tick - value) < HOUR_MS)) ticks.push(value);
+}
+
+function buildRegularTicks(start: number, end: number, stepHours: number) {
+  const ticks: number[] = [];
+  const step = stepHours * HOUR_MS;
+  const first = Math.ceil(start / step) * step;
+
+  addUniqueTick(ticks, start, start, end);
+  for (let time = first; time <= end; time += step) {
+    addUniqueTick(ticks, time, start, end);
+  }
+  addUniqueTick(ticks, end, start, end);
+
+  return ticks.sort((a, b) => a - b);
+}
+
+function buildMonthTicks(start: number, end: number) {
+  const ticks: number[] = [];
+  const startParts = localParts(start);
+  let time = Date.UTC(startParts.year, startParts.month, 1, 0, 0, 0);
+
+  if (time < start) {
+    time = Date.UTC(startParts.year, startParts.month + 1, 1, 0, 0, 0);
+  }
+
+  addUniqueTick(ticks, start, start, end);
+  while (time <= end) {
+    addUniqueTick(ticks, time, start, end);
+    const parts = localParts(time);
+    time = Date.UTC(parts.year, parts.month + 1, 1, 0, 0, 0);
+  }
+  addUniqueTick(ticks, end, start, end);
+
+  return ticks.sort((a, b) => a - b);
+}
+
+function buildXAxisTicks(rows: HourlyPoint[], range: RangeId): AxisTick[] {
+  if (rows.length === 0) return [];
+
+  const start = parseLocalTimestamp(rows[0].time);
+  const end = parseLocalTimestamp(rows.at(-1)?.time ?? rows[0].time);
+  const durationHours = Math.max(1, (end - start) / HOUR_MS);
+
+  if (range === "year" && durationHours > 24 * 62) {
+    return buildMonthTicks(start, end).map((time) => ({
+      time,
+      ...formatAxisLabel(time, range),
+    }));
+  }
+
+  const stepHours = {
+    day: 3,
+    week: 24,
+    month: 72,
+    year: 168,
+  }[range];
+
+  return buildRegularTicks(start, end, stepHours).map((time) => ({
+    time,
+    ...formatAxisLabel(time, range),
+  }));
+}
+
+function buildMinorTicks(rows: HourlyPoint[], range: RangeId) {
+  if (rows.length === 0) return [];
+
+  const start = parseLocalTimestamp(rows[0].time);
+  const end = parseLocalTimestamp(rows.at(-1)?.time ?? rows[0].time);
+  const durationHours = Math.max(1, (end - start) / HOUR_MS);
+
+  if (range === "year" && durationHours > 24 * 62) {
+    return buildMonthTicks(start, end).map((tick) => tick);
+  }
+
+  let stepHours = {
+    day: 1,
+    week: 6,
+    month: 24,
+    year: 168,
+  }[range];
+
+  while (durationHours / stepHours > 80) {
+    stepHours *= 2;
+  }
+
+  return buildRegularTicks(start, end, stepHours);
 }
 
 function downsample(points: HourlyPoint[], maxPoints = 150): ChartPoint[] {
@@ -125,6 +319,148 @@ function buildPath(points: Array<{ x: number; y: number }>) {
     .join(" ");
 }
 
+type WeatherStat = {
+  label: string;
+  english: string;
+  metric: string;
+  detail?: string;
+};
+
+function average(values: number[]) {
+  return values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+}
+
+function maxBy<T>(items: T[], getValue: (item: T) => number) {
+  return items.reduce((best, item) => getValue(item) > getValue(best) ? item : best);
+}
+
+function minBy<T>(items: T[], getValue: (item: T) => number) {
+  return items.reduce((best, item) => getValue(item) < getValue(best) ? item : best);
+}
+
+function sumBy<T>(items: T[], getValue: (item: T) => number) {
+  return items.reduce((sum, item) => sum + getValue(item), 0);
+}
+
+function buildWeatherStats(rows: HourlyPoint[]): WeatherStat[] {
+  if (rows.length === 0) return [];
+
+  const highTemp = maxBy(rows, (row) => row.temperatureF);
+  const lowTemp = minBy(rows, (row) => row.temperatureF);
+  const wettestHour = maxBy(rows, (row) => row.precipitationIn);
+  const averageTemp = average(rows.map((row) => row.temperatureF));
+  const totalPrecip = sumBy(rows, (row) => row.precipitationIn);
+  const totalRain = sumBy(rows, (row) => row.rainIn);
+  const totalShowers = sumBy(rows, (row) => row.showersIn);
+  const totalSnowfall = sumBy(rows, (row) => row.snowfallIn);
+  const wetHours = rows.filter((row) => row.precipitationIn > 0).length;
+
+  return [
+    {
+      label: "Average temperature",
+      english: formatTemperature(averageTemp),
+      metric: formatCelsius(averageTemp),
+    },
+    {
+      label: "High temperature",
+      english: formatTemperature(highTemp.temperatureF),
+      metric: formatCelsius(highTemp.temperatureF),
+      detail: formatStatDate(highTemp.time),
+    },
+    {
+      label: "Low temperature",
+      english: formatTemperature(lowTemp.temperatureF),
+      metric: formatCelsius(lowTemp.temperatureF),
+      detail: formatStatDate(lowTemp.time),
+    },
+    {
+      label: "Total precipitation",
+      english: formatInches(totalPrecip),
+      metric: formatMillimeters(totalPrecip),
+    },
+    {
+      label: "Average precipitation / hour",
+      english: formatInches(totalPrecip / rows.length),
+      metric: formatMillimeters(totalPrecip / rows.length),
+    },
+    {
+      label: "Wettest hour",
+      english: formatInches(wettestHour.precipitationIn),
+      metric: formatMillimeters(wettestHour.precipitationIn),
+      detail: formatStatDate(wettestHour.time),
+    },
+    {
+      label: "Rain total",
+      english: formatInches(totalRain),
+      metric: formatMillimeters(totalRain),
+    },
+    {
+      label: "Showers total",
+      english: formatInches(totalShowers),
+      metric: formatMillimeters(totalShowers),
+    },
+    {
+      label: "Snowfall total",
+      english: formatInches(totalSnowfall),
+      metric: formatMillimeters(totalSnowfall),
+    },
+    {
+      label: "Wet hours",
+      english: `${wetHours} of ${rows.length} hours`,
+      metric: `${Math.round((wetHours / rows.length) * 100)}% of archive`,
+    },
+  ];
+}
+
+function WeatherStatsTable({
+  rows,
+  range,
+  status,
+}: {
+  rows: HourlyPoint[];
+  range: RangeId;
+  status: "loading" | "ready" | "error";
+}) {
+  const stats = useMemo(() => buildWeatherStats(rows), [rows]);
+
+  return (
+    <section className="range-stats">
+      <div className="stats-header">
+        <div>
+          <p className="kicker">Range Statistics</p>
+          <h2>{range} archive table</h2>
+        </div>
+        <strong>{status === "ready" ? `${rows.length} hours` : status}</strong>
+      </div>
+
+      {stats.length > 0 ? (
+        <div className="stats-table" role="table" aria-label={`${range} weather statistics`}>
+          <div className="stats-row stats-row-head" role="row">
+            <span role="columnheader">Statistic</span>
+            <span role="columnheader">English</span>
+            <span role="columnheader">Metric</span>
+            <span role="columnheader">Detail</span>
+          </div>
+          {stats.map((stat) => (
+            <div className="stats-row" role="row" key={stat.label}>
+              <span role="cell">{stat.label}</span>
+              <strong role="cell">{stat.english}</strong>
+              <strong role="cell">{stat.metric}</strong>
+              <span role="cell">{stat.detail ?? "—"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="stats-empty">
+          {status === "error"
+            ? "Archive statistics are unavailable for this selection."
+            : "Archive statistics will appear once hourly rows load."}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function WeatherDiagram({
   rows,
   range,
@@ -133,24 +469,36 @@ function WeatherDiagram({
   range: RangeId;
 }) {
   const chart = useMemo(() => downsample(rows), [rows]);
+  const xAxisTicks = useMemo(() => buildXAxisTicks(rows, range), [rows, range]);
+  const minorTicks = useMemo(() => buildMinorTicks(rows, range), [rows, range]);
   const width = 920;
-  const height = 360;
-  const pad = { top: 34, right: 34, bottom: 48, left: 48 };
+  const height = 390;
+  const pad = { top: 34, right: 112, bottom: 74, left: 78 };
   const innerWidth = width - pad.left - pad.right;
   const innerHeight = height - pad.top - pad.bottom;
   const temps = chart.map((point) => point.temperatureF);
   const minTemp = Math.floor(Math.min(...temps, 32) / 5) * 5;
   const maxTemp = Math.ceil(Math.max(...temps, 90) / 5) * 5;
   const maxPrecip = Math.max(...chart.map((point) => point.precipitationIn), 0.02);
-  const xFor = (index: number) =>
-    pad.left + (chart.length <= 1 ? 0 : (index / (chart.length - 1)) * innerWidth);
+  const precipAxisHeight = innerHeight * 0.46;
+  const precipBaseline = pad.top + innerHeight;
+  const precipAxisTop = precipBaseline - precipAxisHeight;
+  const precipTicks = [0, 0.5, 1];
+  const domainStart = rows[0] ? parseLocalTimestamp(rows[0].time) : 0;
+  const domainEnd = rows.at(-1) ? parseLocalTimestamp(rows.at(-1)?.time ?? rows[0].time) : domainStart;
+  const xForTime = (time: number) =>
+    pad.left + ((time - domainStart) / Math.max(1, domainEnd - domainStart)) * innerWidth;
   const yForTemp = (temp: number) =>
     pad.top + ((maxTemp - temp) / Math.max(1, maxTemp - minTemp)) * innerHeight;
-  const linePoints = chart.map((point, index) => ({
-    x: xFor(index),
+  const yForPrecip = (precip: number) =>
+    precipBaseline - (precip / maxPrecip) * precipAxisHeight;
+  const linePoints = chart.map((point) => ({
+    x: xForTime(parseLocalTimestamp(point.time)),
     y: yForTemp(point.temperatureF),
   }));
   const path = buildPath(linePoints);
+  const firstLinePoint = linePoints[0];
+  const lastLinePoint = linePoints.at(-1);
   const latest = rows.at(-1);
 
   if (chart.length === 0) {
@@ -170,7 +518,7 @@ function WeatherDiagram({
         </div>
         {latest && (
           <strong>
-            {formatTemperature(latest.temperatureF)} · {latest.weatherLabel}
+            {formatTemperaturePair(latest.temperatureF)} · {latest.weatherLabel}
           </strong>
         )}
       </div>
@@ -195,7 +543,8 @@ function WeatherDiagram({
             <g key={tick}>
               <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} className="chart-grid" />
               <text x={pad.left - 12} y={y + 4} className="chart-axis" textAnchor="end">
-                {Math.round(temp)}°
+                <tspan x={pad.left - 12}>{Math.round(temp)}°F</tspan>
+                <tspan x={pad.left - 12} dy="12">{formatCelsius(temp)}</tspan>
               </text>
             </g>
           );
@@ -203,9 +552,9 @@ function WeatherDiagram({
 
         {chart.map((point, index) => {
           const barWidth = Math.max(2, innerWidth / chart.length * 0.48);
-          const barHeight = (point.precipitationIn / maxPrecip) * (innerHeight * 0.46);
-          const x = xFor(index) - barWidth / 2;
-          const y = pad.top + innerHeight - barHeight;
+          const barHeight = precipBaseline - yForPrecip(point.precipitationIn);
+          const x = xForTime(parseLocalTimestamp(point.time)) - barWidth / 2;
+          const y = precipBaseline - barHeight;
           return (
             <rect
               key={`${point.time}-${index}`}
@@ -219,10 +568,78 @@ function WeatherDiagram({
           );
         })}
 
-        <path
-          d={`${path} L ${xFor(chart.length - 1)} ${pad.top + innerHeight} L ${pad.left} ${pad.top + innerHeight} Z`}
-          fill="url(#tempFill)"
-        />
+        <g aria-hidden="true">
+          <line
+            x1={width - pad.right}
+            x2={width - pad.right}
+            y1={precipAxisTop}
+            y2={precipBaseline}
+            className="chart-axis-line"
+          />
+          {precipTicks.map((tick) => {
+            const value = tick * maxPrecip;
+            const y = yForPrecip(value);
+            return (
+              <g key={tick}>
+                <line
+                  x1={width - pad.right}
+                  x2={width - pad.right + 7}
+                  y1={y}
+                  y2={y}
+                  className="chart-axis-line"
+                />
+                <text x={width - pad.right + 13} y={y + 4} className="chart-axis chart-axis-right">
+                  <tspan x={width - pad.right + 13}>{value.toFixed(value >= 0.1 ? 2 : 3)} in</tspan>
+                  <tspan x={width - pad.right + 13} dy="12">{formatMillimeters(value)}</tspan>
+                </text>
+              </g>
+            );
+          })}
+          <text x={width - pad.right + 13} y={precipAxisTop - 10} className="chart-axis chart-axis-right chart-axis-title">
+            precip
+          </text>
+        </g>
+
+        <line x1={pad.left} x2={width - pad.right} y1={precipBaseline} y2={precipBaseline} className="chart-axis-base" />
+        {minorTicks.map((tick) => {
+          const x = xForTime(tick);
+          return (
+            <line
+              key={`minor-${tick}`}
+              x1={x}
+              x2={x}
+              y1={precipBaseline}
+              y2={precipBaseline + 5}
+              className="chart-x-minor"
+            />
+          );
+        })}
+        {xAxisTicks.map((tick) => {
+          const x = xForTime(tick.time);
+          const anchor = x < pad.left + 30 ? "start" : x > width - pad.right - 30 ? "end" : "middle";
+          return (
+            <g key={`x-${tick.time}`}>
+              <line
+                x1={x}
+                x2={x}
+                y1={precipBaseline}
+                y2={precipBaseline + 9}
+                className="chart-x-major"
+              />
+              <text x={x} y={height - 34} className="chart-axis chart-x-label" textAnchor={anchor}>
+                <tspan x={x}>{tick.primary}</tspan>
+                <tspan x={x} dy="13">{tick.secondary}</tspan>
+              </text>
+            </g>
+          );
+        })}
+
+        {firstLinePoint && lastLinePoint && (
+          <path
+            d={`${path} L ${lastLinePoint.x} ${precipBaseline} L ${firstLinePoint.x} ${precipBaseline} Z`}
+            fill="url(#tempFill)"
+          />
+        )}
         <path d={path} fill="none" stroke="url(#tempLine)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
 
         {linePoints.map((point, index) => (
@@ -231,16 +648,6 @@ function WeatherDiagram({
           ) : null
         ))}
 
-        {chart.length > 1 && (
-          <>
-            <text x={pad.left} y={height - 16} className="chart-axis">
-              {formatHour(chart[0].time)}
-            </text>
-            <text x={width - pad.right} y={height - 16} className="chart-axis" textAnchor="end">
-              {formatHour(chart.at(-1)?.time ?? chart[0].time)}
-            </text>
-          </>
-        )}
       </svg>
 
       <div className="diagram-legend">
@@ -261,10 +668,11 @@ export default function NurseryPage() {
   const biome = useMemo(() => getBiome(selectedId), [selectedId]);
   const selectedWeather = weather[selectedId];
   const timezone = selectedWeather?.resolvedLocation.timezone ?? biome.timezone;
-  const rows = payload?.rows ?? [];
-  const availableNote = payload && payload.availableHours < payload.requestedHours
-    ? `${payload.availableHours} archived hours available for this ${range}.`
-    : `${payload?.availableHours ?? 0} archived hours loaded.`;
+  const currentPayload = payload?.biomeId === selectedId && payload.range === range ? payload : null;
+  const rows = currentPayload?.rows ?? [];
+  const availableNote = currentPayload && currentPayload.availableHours < currentPayload.requestedHours
+    ? `${currentPayload.availableHours} archived hours available for this ${range}.`
+    : `${currentPayload?.availableHours ?? 0} archived hours loaded.`;
 
   return (
     <AppShell title="Nursery" eyebrow="Live Weather Bench">
@@ -317,7 +725,10 @@ export default function NurseryPage() {
                   <p className="kicker">{biome.country}</p>
                   <h2>{biome.name}</h2>
                 </div>
-                <strong>{formatTemperature(selectedWeather.current.temperatureF)}</strong>
+                <strong>
+                  <span>{formatTemperature(selectedWeather.current.temperatureF)}</span>
+                  <small>{formatCelsius(selectedWeather.current.temperatureF)}</small>
+                </strong>
               </div>
 
               <WeatherDiagram rows={rows} range={range} />
@@ -329,7 +740,7 @@ export default function NurseryPage() {
                 </div>
                 <div>
                   <span>Feels Like</span>
-                  <strong>{formatTemperature(selectedWeather.current.apparentTemperatureF)}</strong>
+                  <strong>{formatTemperaturePair(selectedWeather.current.apparentTemperatureF)}</strong>
                 </div>
                 <div>
                   <span>Humidity</span>
@@ -337,11 +748,11 @@ export default function NurseryPage() {
                 </div>
                 <div>
                   <span>Wind</span>
-                  <strong>{Math.round(selectedWeather.current.windSpeedMph)} mph</strong>
+                  <strong>{formatWindPair(selectedWeather.current.windSpeedMph)}</strong>
                 </div>
                 <div>
                   <span>Precipitation</span>
-                  <strong>{formatInches(selectedWeather.current.precipitationIn)}</strong>
+                  <strong>{formatInchesPair(selectedWeather.current.precipitationIn)}</strong>
                 </div>
                 <div>
                   <span>Cloud Cover</span>
@@ -349,18 +760,7 @@ export default function NurseryPage() {
                 </div>
               </div>
 
-              <div className="weather-days">
-                {selectedWeather.daily.map((day) => (
-                  <div key={day.date} className="day-row">
-                    <span>{day.date}</span>
-                    <strong>{day.weatherLabel}</strong>
-                    <span>
-                      {formatTemperature(day.temperatureMinF)} / {formatTemperature(day.temperatureMaxF)}
-                    </span>
-                    <span>{formatInches(day.precipitationSumIn)}</span>
-                  </div>
-                ))}
-              </div>
+              <WeatherStatsTable rows={rows} range={range} status={hourlyStatus} />
             </>
           ) : (
             <div className="empty-state">
