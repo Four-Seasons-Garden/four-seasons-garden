@@ -112,6 +112,116 @@ body {
   mix-blend-mode: screen;
 }
 
+.time-wash,
+.moon-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 1.2s ease, background 1.2s ease;
+}
+
+.time-wash {
+  z-index: 54;
+  opacity: 0;
+  mix-blend-mode: multiply;
+}
+
+.moon-glow {
+  z-index: 14;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.scene[data-time="dawn"] .time-wash {
+  opacity: .24;
+  background:
+    radial-gradient(55% 34% at 16% 18%, rgba(255, 205, 174, .72), transparent 62%),
+    linear-gradient(180deg, rgba(184, 152, 202, .28), rgba(255, 210, 154, .16) 54%, transparent);
+}
+
+.scene[data-time="morning"] .time-wash {
+  opacity: .12;
+  background:
+    radial-gradient(45% 30% at 78% 24%, rgba(255, 229, 156, .66), transparent 68%),
+    linear-gradient(180deg, rgba(255, 239, 196, .12), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+.scene[data-time="noon"] .time-wash {
+  opacity: .08;
+  background: radial-gradient(52% 42% at 50% 28%, rgba(255, 250, 214, .68), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+.scene[data-time="afternoon"] .time-wash {
+  opacity: .18;
+  background:
+    radial-gradient(48% 32% at 72% 34%, rgba(255, 202, 132, .55), transparent 68%),
+    linear-gradient(180deg, transparent, rgba(180, 114, 80, .16));
+}
+
+.scene[data-time="dusk"] .time-wash {
+  opacity: .38;
+  background:
+    radial-gradient(60% 40% at 20% 26%, rgba(249, 164, 154, .58), transparent 62%),
+    linear-gradient(180deg, rgba(88, 80, 132, .26), rgba(145, 92, 112, .28) 56%, rgba(54, 40, 74, .22));
+}
+
+.scene[data-time="evening"] .time-wash,
+.scene[data-time="night"] .time-wash {
+  background:
+    radial-gradient(60% 34% at 50% 10%, rgba(78, 95, 148, .25), transparent 62%),
+    linear-gradient(180deg, rgba(16, 24, 54, .68), rgba(22, 30, 60, .46) 50%, rgba(20, 28, 42, .5));
+}
+
+.scene[data-time="evening"] .time-wash { opacity: .52; }
+.scene[data-time="night"] .time-wash { opacity: .72; }
+
+.scene[data-time="evening"] .moon-glow,
+.scene[data-time="night"] .moon-glow {
+  opacity: .7;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(255, 249, 220, .58) 0 18px, rgba(255, 249, 220, .16) 19px 82px, transparent 144px),
+    radial-gradient(70% 42% at 56% 18%, rgba(120, 152, 210, .18), transparent 68%);
+}
+
+.scene[data-moon="new"] .moon-glow {
+  opacity: .24;
+  background: radial-gradient(72% 42% at 55% 18%, rgba(92, 118, 174, .16), transparent 70%);
+}
+
+.scene[data-moon="full"] .moon-glow {
+  opacity: .9;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(255, 252, 226, .82) 0 24px, rgba(255, 252, 226, .22) 25px 110px, transparent 170px),
+    radial-gradient(70% 42% at 56% 18%, rgba(145, 172, 224, .24), transparent 68%);
+}
+
+.scene[data-weather="cloud"] .time-wash,
+.scene[data-weather="rain"] .time-wash,
+.scene[data-weather="thunder"] .time-wash {
+  filter: saturate(.88);
+}
+
+.scene[data-weather="rain"] .haze,
+.scene[data-weather="thunder"] .haze {
+  opacity: .72;
+  background:
+    radial-gradient(70% 30% at 50% 60%, color-mix(in oklch, var(--cloud) 34%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(40, 48, 62, .12), color-mix(in oklch, var(--cloud) 30%, transparent) 70%, transparent);
+}
+
+.scene[data-weather="snow"] .haze {
+  opacity: .9;
+  background:
+    radial-gradient(70% 38% at 50% 58%, rgba(255,255,255,.42), transparent 70%),
+    linear-gradient(180deg, rgba(220, 235, 248, .24), rgba(255,255,255,.18) 70%, transparent);
+}
+
+.scene[data-weather="thunder"] .vignette {
+  background: radial-gradient(120% 80% at 50% 50%, transparent 42%, rgba(36,42,58,.36) 84%, rgba(16,18,28,.58) 100%);
+}
+
 .background-dof { filter: blur(1.2px); }
 .midground-dof  { filter: none; }
 .foreground-dof { filter: blur(0.6px); }
@@ -220,6 +330,7 @@ body {
   box-shadow: 0 6px 20px rgba(60,40,20,.16);
   color: var(--hud-text);
   white-space: nowrap;
+  max-width: min(360px, calc(100vw - 72px));
 }
 .hud-weather .ico {
   width: 32px; height: 32px; border-radius: 999px;
@@ -237,10 +348,18 @@ body {
   font-family: var(--font-cormorant), serif;
   font-style: italic; font-size: 17px; font-weight: 400; margin-top: 2px;
 }
+.hud-weather .meta .detail {
+  margin-top: 3px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .12em;
+  opacity: .5;
+  text-transform: uppercase;
+}
 
 /* Biome dropdown */
 .hud-biomes {
-  position: absolute; top: calc(36px + 60px); right: 36px;
+  position: absolute; top: calc(36px + 76px); right: 36px;
   pointer-events: auto; width: 240px;
 }
 .biome-trigger, .biome-option {

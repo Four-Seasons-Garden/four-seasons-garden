@@ -99,7 +99,7 @@ export const BIOMES: readonly Biome[] = [
     name: "Williamsburg, VA",
     shortName: "Williamsburg",
     country: "United States",
-    coords: { lat: 37.2695, lon: -76.7075 },
+    coords: { lat: 37.263753, lon: -76.64653 },
     timezone: "America/New_York",
     blurb: "Four-season cottage garden, golden-hour glow",
     glyph: "W",
