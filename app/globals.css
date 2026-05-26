@@ -1,26 +1,420 @@
-@import "tailwindcss";
+/* Four Seasons Garden — globals.css
+   Watercolor cottage scene styles. Imported once via app/layout.tsx. */
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+html, body { overflow: hidden; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #f3ecdc;
+  color: #3b2a1c;
+  font-family: var(--font-cormorant), 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─────────── Scene palette (defaults — Williamsburg) ─────────── */
+.scene {
+  --sky-top:        #e9d6c2;
+  --sky-mid:        #f4dcb6;
+  --sky-low:        #fbe9c5;
+  --cloud:          #fbf3df;
+  --sun-warm:       #fbd58a;
+
+  --hill-far:       #c9c1bc;
+  --hill-mid:       #a4ad94;
+  --hill-near:      #8b9e78;
+  --tree-far:       #6e7e5e;
+
+  --wall:           #efd9aa;
+  --wall-wash:      #e6c98e;
+  --thatch:         #b87650;
+  --thatch-wash:    #d6916a;
+  --thatch-shadow:  #6e3e22;
+  --brick:          #a4624a;
+  --brick-dark:     #7c4836;
+  --beam:           #4e3422;
+  --door-warm:      #8e5436;
+  --window-glow:    #ffd989;
+
+  --leaf-deep:      #4a5a36;
+  --leaf-cottage:   #6e8a4a;
+  --leaf-fresh:     #93a86a;
+  --leaf-sage:      #6f8a64;
+  --moss:           #7c8a5a;
+
+  --rose-deep:      #c2566a;
+  --rose-pale:      #ecbac2;
+  --lavender-deep:  #8a7aae;
+  --lavender-pale:  #c4b7d6;
+  --butter:         #f0c860;
+  --center-deep:    #b88a3a;
+  --poppy:          #c4503a;
+  --poppy-light:    #e07a5a;
+
+  --earth:          #6e4a30;
+  --earth-dark:     #4a2e1c;
+  --tomato-deep:    #c4503a;
+  --tomato-light:   #f29680;
+  --lettuce:        #9eb86a;
+  --lettuce-deep:   #6a8a48;
+  --lettuce-light:  #cdde9c;
+  --pumpkin:        #dc8a4a;
+  --pumpkin-deep:   #a55a28;
+  --pumpkin-light:  #f6c08a;
+  --carrot-tops:    #9eb86a;
+
+  --stone:          #d8c39a;
+  --stone-light:    #f3e7c8;
+  --dirt:           #8a6a48;
+
+  --door-wash:      #6e4028;
+  --door-deep:      #3e2414;
+  --step:           #c4ab86;
+  --step-shadow:    #8a6e4a;
+  --step-crack:     #5a4028;
+  --picket:         #f6ecd6;
+
+  --pot-light:      #b46c46;
+  --pot-deep:       #5a2c18;
+  --pot-soil:       #6e4626;
+  --brass:          #c79a4a;
+
+  --hud-text:       #3b2a1c;
+  --hud-tint:       #f6efe0;
+}
+
+/* ─────────── Animations ─────────── */
+@keyframes scene-sway-a { 0%, 100% { transform: rotate(-1.8deg); } 50% { transform: rotate(1.8deg); } }
+@keyframes scene-sway-b { 0%, 100% { transform: rotate(-2.4deg) translateY(0); } 50% { transform: rotate(2.4deg) translateY(-1px); } }
+@keyframes scene-sway-c { 0%, 100% { transform: rotate(-2.8deg); } 50% { transform: rotate(3.0deg); } }
+@keyframes pulse-glow   { 0%, 100% { opacity: .55; transform: scale(.95); } 50% { opacity: .95; transform: scale(1.06); } }
+@keyframes smoke-rise   { 0% { transform: translate(0, 0) scale(1); opacity: .6; } 100% { transform: translate(-12px, -40px) scale(1.6); opacity: 0; } }
+@keyframes firefly-drift { 0% { transform: translate(0, 0); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+
+.sway   { animation: scene-sway-a 5.5s ease-in-out infinite; transform-origin: 50% 100%; }
+.sway-2 { animation: scene-sway-b 4.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.sway-3 { animation: scene-sway-c 6.4s ease-in-out infinite; transform-origin: 50% 100%; }
+
+/* ─────────── Layout ─────────── */
+.canvas {
+  position: relative; width: 100%; height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--sky-low);
+}
+
+.haze {
+  position: absolute; inset: 0; z-index: 9;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 25% at 50% 62%, color-mix(in oklch, var(--sun-warm) 35%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg, transparent 60%, color-mix(in oklch, var(--sky-low) 35%, transparent) 78%, transparent 100%);
+  mix-blend-mode: screen;
+}
+
+.background-dof { filter: blur(1.2px); }
+.midground-dof  { filter: none; }
+.foreground-dof { filter: blur(0.6px); }
+
+.layer-bg  { position: absolute; inset: 0; z-index: 10; }
+.skyhills-wrap { position: absolute; inset: 0; }
+
+.layer-mid { position: absolute; inset: 0; z-index: 20; }
+
+.cottage-wrap {
+  position: absolute; left: 50%; bottom: 36%;
+  transform: translateX(-50%);
+  width: 260px; height: 220px;
+  animation: scene-sway-a 18s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.smoke-puff {
+  position: absolute;
+  width: 22px; height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--cloud) 0%, color-mix(in oklch, var(--cloud) 60%, transparent) 60%, transparent 80%);
+  pointer-events: none;
+  filter: blur(4px);
+  animation: smoke-rise 6s ease-out infinite;
+}
+
+.path-wrap        { position: absolute; left: 49%; bottom: 8%; transform: translateX(-50%); width: 32%; height: 32%; z-index: 1; }
+.greenhouse-wrap.right { position: absolute; right: 6%; bottom: 12%; width: 17%; transform-origin: 50% 100%; }
+.veggies-wrap     { position: absolute; left: 1%; bottom: 9%; width: 44%; }
+.wildflowers-wrap.left { position: absolute; left: 22%; bottom: 28%; width: 18%; transform: scale(.7); transform-origin: 0% 100%; opacity: .92; }
+.wildflowers-wrap.mid  { position: absolute; left: 64%; bottom: 9%;  width: 24%; transform: scale(.85); transform-origin: 0% 100%; opacity: .95; }
+.fence-wrap       { position: absolute; left: 50%; bottom: 30%; transform: translateX(-50%); width: 36%; height: 32px; opacity: .82; }
+
+.fireflies { position: absolute; inset: 0; z-index: 25; pointer-events: none; opacity: 0; transition: opacity .6s; }
+.firefly {
+  position: absolute;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: radial-gradient(circle, #fff9c0 0%, #f5d97a 40%, transparent 70%);
+  box-shadow: 0 0 14px 3px #f5d97a;
+  animation: firefly-drift var(--dur) ease-in-out infinite;
+  animation-delay: var(--delay);
+  opacity: 0;
+}
+
+.layer-fg { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+.doorframe-wrap { position: absolute; inset: 0; }
+.doorstep-wrap  { position: absolute; left: 0; right: 0; bottom: 0; height: 9%; }
+.seedling-wrap  {
+  position: absolute; bottom: 4%; left: 24%;
+  width: 110px; height: 130px;
+  pointer-events: auto;
+  z-index: 2;
+}
+.seedling-glow {
+  position: absolute; inset: -80%;
+  background: radial-gradient(circle at 50% 55%,
+    color-mix(in oklch, #ffe9a8 80%, transparent) 0%,
+    color-mix(in oklch, #ffe9a8 30%, transparent) 25%,
+    transparent 60%);
+  filter: blur(28px);
+  animation: pulse-glow 5s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.vignette {
+  position: absolute; inset: 0; z-index: 55; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 50%, transparent 50%, rgba(74,52,28,.22) 90%, rgba(50,32,16,.35) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* ─────────── HUD ─────────── */
+.layer-hud { position: absolute; inset: 0; z-index: 70; pointer-events: none; }
+
+.hud-mark {
+  position: absolute; bottom: 36px; left: 44px;
+  pointer-events: auto;
+  color: var(--hud-text);
+  display: flex; flex-direction: column; gap: 0;
+  text-shadow: 0 1px 14px rgba(0,0,0,.28), 0 0 1px rgba(0,0,0,.2);
+  opacity: .85;
+}
+.hud-mark .wm {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-style: italic; font-weight: 300; font-size: 17px;
+  letter-spacing: .035em; line-height: 1; white-space: nowrap;
+}
+.hud-mark .wm em { font-style: normal; font-weight: 400; letter-spacing: 0; }
+.hud-mark .rule { width: 28px; height: 1px; background: currentColor; opacity: .35; margin: 11px 0; }
+.hud-mark .tag {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px; letter-spacing: .38em; text-transform: uppercase;
+  opacity: .58; white-space: nowrap;
+}
+
+.hud-weather {
+  position: absolute; top: 36px; right: 36px;
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 20px 9px 12px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--hud-tint) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in oklch, var(--hud-text) 12%, transparent);
+  box-shadow: 0 6px 20px rgba(60,40,20,.16);
+  color: var(--hud-text);
+  white-space: nowrap;
+}
+.hud-weather .ico {
+  width: 32px; height: 32px; border-radius: 999px;
+  display: grid; place-items: center;
+  color: var(--hud-text);
+  background: color-mix(in oklch, var(--sun-warm) 35%, transparent);
+  box-shadow: inset 0 0 8px color-mix(in oklch, var(--sun-warm) 50%, transparent);
+}
+.hud-weather .meta { display: flex; flex-direction: column; line-height: 1.15; }
+.hud-weather .meta .label {
+  font-size: 9.5px; opacity: .55; text-transform: uppercase; letter-spacing: .22em;
+  font-family: var(--font-geist-mono), monospace;
+}
+.hud-weather .meta .val {
+  font-family: var(--font-cormorant), serif;
+  font-style: italic; font-size: 17px; font-weight: 400; margin-top: 2px;
+}
+
+/* Biome dropdown */
+.hud-biomes {
+  position: absolute; top: calc(36px + 60px); right: 36px;
+  pointer-events: auto; width: 240px;
+}
+.biome-trigger, .biome-option {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 8px 14px 8px 10px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklch, var(--hud-text) 10%, transparent);
+  background: color-mix(in oklch, var(--hud-tint) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  color: var(--hud-text);
+  font: inherit; cursor: pointer; text-align: left;
+  transition: background .2s, border-color .2s, transform .2s;
+}
+.biome-trigger { box-shadow: 0 6px 20px rgba(60,40,20,.16); }
+.biome-trigger:hover { background: color-mix(in oklch, var(--hud-tint) 92%, transparent); }
+.biome-trigger .chev { margin-left: auto; color: var(--hud-text); opacity: .55; transition: transform .2s; }
+.biome-trigger .chev.open { transform: rotate(180deg); }
+.biome-trigger .glyph, .biome-option .glyph {
+  width: 28px; height: 28px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: color-mix(in oklch, var(--sun-warm) 60%, transparent);
+  color: var(--hud-text);
+  font-family: var(--font-cormorant), serif;
+  font-weight: 500; font-size: 15px; line-height: 1;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 8px color-mix(in oklch, var(--sun-warm) 50%, transparent);
+}
+.biome-trigger .label, .biome-option .label {
+  display: flex; flex-direction: column; line-height: 1.15;
+  overflow: hidden; flex: 1;
+}
+.biome-trigger .name, .biome-option .name {
+  font-family: var(--font-cormorant), serif;
+  font-size: 15px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.biome-trigger .feature, .biome-option .feature {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px; text-transform: uppercase; letter-spacing: .18em;
+  opacity: .55;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.biome-menu {
+  margin-top: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px;
+  border-radius: 16px;
+  background: color-mix(in oklch, var(--hud-tint) 85%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid color-mix(in oklch, var(--hud-text) 12%, transparent);
+  box-shadow: 0 12px 36px -8px rgba(60,40,20,.32);
+  animation: biome-menu-in .18s cubic-bezier(.2,.7,.2,1) both;
+}
+@keyframes biome-menu-in {
+  0%   { opacity: 0; transform: translateY(-4px) scale(.98); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.biome-option { background: transparent; border-color: transparent; box-shadow: none; border-radius: 10px; }
+.biome-option:hover { background: color-mix(in oklch, var(--hud-text) 6%, transparent); }
+.biome-option[aria-selected="true"] { background: color-mix(in oklch, var(--hud-text) 8%, transparent); }
+.biome-option[aria-selected="true"] .glyph { background: color-mix(in oklch, var(--sun-warm) 80%, transparent); }
+.biome-option .tick { color: var(--hud-text); opacity: .8; margin-left: auto; }
+
+/* ─────────── Weather particle effects ─────────── */
+.fx { position: absolute; inset: 0; pointer-events: none; z-index: 28; }
+.fx-aurora   { z-index: 12; top: 0; }
+.fx-rainbow  { z-index: 13; }
+.fx-mist     { z-index: 27; }
+.fx-rain     { z-index: 32; }
+.fx-snow     { z-index: 33; }
+.fx-blossoms { z-index: 34; }
+.fx-lightning{ z-index: 35; }
+
+@keyframes rain-fall {
+  0%   { transform: translate3d(0, -120%, 0); }
+  100% { transform: translate3d(-12px, 110vh, 0); }
+}
+.raindrop {
+  position: absolute;
+  width: 1.2px;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in oklch, var(--hud-text) 70%, transparent) 30%, color-mix(in oklch, var(--hud-text) 90%, transparent) 100%);
+  border-radius: 1px;
+  transform: translate3d(0, -120%, 0);
+  animation: rain-fall linear infinite;
+}
+.fx-rain[data-intensity="heavy"]  .raindrop { width: 1.6px; }
+.fx-rain[data-intensity="shower"] .raindrop {
+  background: linear-gradient(180deg, transparent 0%, color-mix(in oklch, var(--sun-warm) 60%, transparent) 80%);
+}
+
+@keyframes snow-fall {
+  0%   { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+  100% { transform: translate3d(var(--drift), 110vh, 0) rotate(360deg); }
+}
+.snowflake {
+  position: absolute; top: 0;
+  background: radial-gradient(circle, #fff 0%, #e8eef4 50%, transparent 80%);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255,255,255,.5);
+  animation: snow-fall linear infinite;
+}
+
+@keyframes petal-fall {
+  0%   { transform: translate3d(0, -10vh, 0) rotate(0deg);  opacity: 0; }
+  10%  { opacity: var(--opacity-target, 0.9); }
+  90%  { opacity: var(--opacity-target, 0.9); }
+  100% { transform: translate3d(var(--drift), 110vh, 0) rotate(var(--rot)); opacity: 0; }
+}
+.petal {
+  position: absolute; top: 0;
+  border-radius: 50% 50% 50% 0;
+  transform-origin: center;
+  animation: petal-fall linear infinite;
+  box-shadow: 0 0 2px rgba(255,255,255,.2);
+}
+.petal-cherry { border-radius: 60% 60% 60% 40% / 70% 70% 30% 30%; }
+.petal-maple  { clip-path: polygon(50% 0%, 65% 25%, 95% 30%, 70% 50%, 85% 85%, 50% 65%, 15% 85%, 30% 50%, 5% 30%, 35% 25%); border-radius: 0; }
+
+@keyframes mist-drift {
+  0%   { transform: translateX(-30%); }
+  100% { transform: translateX(30%); }
+}
+.mist-band {
+  position: absolute; left: -30%; right: -30%;
+  height: 80px;
+  background: radial-gradient(80% 100% at 50% 50%,
+    color-mix(in oklch, var(--cloud) 85%, transparent) 0%,
+    color-mix(in oklch, var(--cloud) 40%, transparent) 50%,
+    transparent 80%);
+  filter: blur(10px);
+  mix-blend-mode: screen;
+  animation: mist-drift ease-in-out infinite alternate;
+}
+.band-a { top: 56%; height: 90px;  opacity: .55; animation-duration: 28s; }
+.band-b { top: 64%; height: 70px;  opacity: .45; animation-duration: 34s; animation-direction: alternate-reverse; }
+.band-c { top: 48%; height: 110px; opacity: .35; animation-duration: 40s; }
+.band-d { top: 72%; height: 90px;  opacity: .60; animation-duration: 24s; animation-direction: alternate-reverse; }
+.fx-mist[data-density="heavy"] .mist-band { opacity: .8; }
+
+@keyframes aurora-shift {
+  0%, 100% { transform: translateX(0)    scaleY(1);   filter: hue-rotate(0deg); }
+  50%      { transform: translateX(-2%)  scaleY(.96); filter: hue-rotate(-22deg); }
+}
+.fx-aurora { animation: aurora-shift 22s ease-in-out infinite; opacity: .85; }
+
+@keyframes lightning-strike {
+  0%, 92%, 100% { background: transparent; }
+  93%, 95%      { background: rgba(255, 245, 220, .35); }
+  94%           { background: rgba(255, 245, 220, .65); }
+}
+.fx-lightning { animation: lightning-strike 9s steps(1, end) infinite; mix-blend-mode: screen; }
+
+.pond-band {
+  position: absolute; left: 0; right: 0; bottom: 9%;
+  height: 90px; z-index: 19;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--hill-mid) 25%, transparent) 0%,
+    color-mix(in oklch, var(--hill-near) 35%, transparent) 50%,
+    color-mix(in oklch, var(--leaf-deep) 40%, transparent) 100%);
+  mix-blend-mode: multiply;
+  opacity: .45;
+  pointer-events: none;
+  transform: scaleY(-1);
+  filter: blur(.5px);
+}
+.pond-band::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg,
+    color-mix(in oklch, var(--cloud) 30%, transparent) 0,
+    color-mix(in oklch, var(--cloud) 30%, transparent) 1px,
+    transparent 1px,
+    transparent 6px);
+  mix-blend-mode: screen;
+  opacity: .35;
 }

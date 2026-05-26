@@ -1,198 +1,266 @@
-export type BiomeLighting = {
-  skyGradient: string;
-  atmosphericHaze: string;   // rgba for horizon depth fog
-  mountainColor: string;
-  treeFar: string;
-  treeMid: string;
-  grassBase: string;
-  grassShadow: string;
-  pathStone: string;
-  pathStoneShadow: string;
-  flowerPrimary: string;
-  flowerSecondary: string;
-  flowerTertiary: string;
-  flowerCenter: string;
-  stemColor: string;
-  leafColor: string;
-  foliageDark: string;
-  mistOverlay: string;       // rgba for ground mist
-  accent: string;
-  glow: string;
-  particle: "none" | "snow" | "rain" | "petals" | "mist";
+/* Four Seasons Garden — biome configuration.
+   Each biome defines a CSS-variable palette that re-skins the whole watercolor
+   scene, plus an `effects` block that toggles per-biome weather particle
+   layers (rain, snow, aurora, blossoms, mist, rainbow, fireflies). */
+
+export type BiomePalette = Partial<{
+  "sky-top": string;
+  "sky-mid": string;
+  "sky-low": string;
+  "cloud": string;
+  "sun-warm": string;
+  "hill-far": string;
+  "hill-mid": string;
+  "hill-near": string;
+  "tree-far": string;
+  "wall": string;
+  "wall-wash": string;
+  "thatch": string;
+  "thatch-wash": string;
+  "thatch-shadow": string;
+  "brick": string;
+  "brick-dark": string;
+  "beam": string;
+  "door-warm": string;
+  "window-glow": string;
+  "leaf-deep": string;
+  "leaf-cottage": string;
+  "leaf-fresh": string;
+  "leaf-sage": string;
+  "moss": string;
+  "rose-deep": string;
+  "rose-pale": string;
+  "lavender-deep": string;
+  "lavender-pale": string;
+  "butter": string;
+  "center-deep": string;
+  "poppy": string;
+  "poppy-light": string;
+  "earth": string;
+  "earth-dark": string;
+  "tomato-deep": string;
+  "tomato-light": string;
+  "lettuce": string;
+  "lettuce-deep": string;
+  "lettuce-light": string;
+  "pumpkin": string;
+  "pumpkin-deep": string;
+  "pumpkin-light": string;
+  "carrot-tops": string;
+  "stone": string;
+  "stone-light": string;
+  "dirt": string;
+  "door-wash": string;
+  "door-deep": string;
+  "step": string;
+  "step-shadow": string;
+  "step-crack": string;
+  "picket": string;
+  "pot-light": string;
+  "pot-deep": string;
+  "pot-soil": string;
+  "brass": string;
+  "hud-text": string;
+  "hud-tint": string;
+}>;
+
+export type BiomeEffects = {
+  sun?: "golden" | "pale" | "diffuse" | "tropical";
+  rain?: "mild" | "heavy" | "shower";
+  snow?: boolean;
+  aurora?: boolean;
+  rainbow?: boolean;
+  mist?: "light" | "heavy";
+  blossoms?: "cherry" | "maple" | "plumeria";
+  fireflies?: boolean;
 };
 
 export type Biome = {
   id: string;
-  name: string;
-  location: string;
-  flag: string;
-  coordinates: { lat: number; lon: number };
-  season: string;
-  mood: string;
-  lighting: BiomeLighting;
+  name: string;          // full "Williamsburg, VA"
+  shortName: string;     // dropdown label
+  country: string;
+  coords: { lat: number; lon: number };
+  timezone: string;
+  blurb: string;
+  glyph: string;         // single letter shown in the HUD chip
+  theme: {
+    label: string;       // category label e.g. "Subarctic frost"
+    lighting: string;    // free-form name, useful for analytics
+    keyFeature: string;  // weather-chip text
+    palette: BiomePalette;
+  };
+  effects: BiomeEffects;
 };
 
 export const BIOMES: readonly Biome[] = [
   {
     id: "williamsburg",
-    name: "Williamsburg",
-    location: "Virginia, USA",
-    flag: "🇺🇸",
-    coordinates: { lat: 37.2695, lon: -76.7075 },
-    season: "Four Seasons",
-    mood: "Golden Hour Reverie",
-    lighting: {
-      skyGradient:
-        "linear-gradient(180deg, #1c3050 0%, #3a4870 16%, #b06828 36%, #d89038 50%, #c8a848 62%, #7a9030 74%, #3d6820 84%, #2a4818 100%)",
-      atmosphericHaze: "rgba(200,150,60,0.22)",
-      mountainColor: "#5a7838",
-      treeFar: "#1a3010",
-      treeMid: "#243e14",
-      grassBase: "#3d6820",
-      grassShadow: "#2a4a15",
-      pathStone: "#d4c49c",
-      pathStoneShadow: "#b8a878",
-      flowerPrimary: "#d82020",
-      flowerSecondary: "#f5c010",
-      flowerTertiary: "#f07040",
-      flowerCenter: "#7a3808",
-      stemColor: "#3d7520",
-      leafColor: "#4a8828",
-      foliageDark: "#1a3810",
-      mistOverlay: "rgba(200,160,70,0.12)",
-      accent: "#f5c010",
-      glow: "rgba(220,150,40,0.22)",
-      particle: "none",
+    name: "Williamsburg, VA",
+    shortName: "Williamsburg",
+    country: "United States",
+    coords: { lat: 37.2695, lon: -76.7075 },
+    timezone: "America/New_York",
+    blurb: "Four-season cottage garden, golden-hour glow",
+    glyph: "W",
+    theme: {
+      label: "Classic four seasons",
+      lighting: "golden-hour",
+      keyFeature: "Mild rain & black-eyed susans",
+      palette: {
+        "sky-top": "#e9d6c2",
+        "sky-mid": "#f4dcb6",
+        "sky-low": "#fbe9c5",
+        "cloud":   "#fbf3df",
+        "sun-warm":"#fbd58a",
+        "hill-far":"#c9c1bc",
+        "hill-mid":"#a4ad94",
+        "hill-near":"#8b9e78",
+        "wall":    "#e6c895",
+        "thatch":  "#a4624a",
+        "window-glow": "#ffd989",
+      },
     },
+    effects: { sun: "golden", rain: "mild", fireflies: false },
   },
   {
     id: "akureyri",
-    name: "Akureyri",
-    location: "Iceland",
-    flag: "🇮🇸",
-    coordinates: { lat: 65.6835, lon: -18.1105 },
-    season: "Subarctic Winter",
-    mood: "Aurora Stillness",
-    lighting: {
-      skyGradient:
-        "linear-gradient(180deg, #05080f 0%, #0a1428 18%, #081c38 38%, #0c2838 55%, #082028 72%, #040e12 100%)",
-      atmosphericHaze: "rgba(60,160,200,0.20)",
-      mountainColor: "#3a5878",
-      treeFar: "#0c1610",
-      treeMid: "#101c14",
-      grassBase: "#c8d8e8",
-      grassShadow: "#a0b8cc",
-      pathStone: "#d0dce8",
-      pathStoneShadow: "#a8bccc",
-      flowerPrimary: "#40d090",
-      flowerSecondary: "#8060e0",
-      flowerTertiary: "#60a8e8",
-      flowerCenter: "#e8f4ff",
-      stemColor: "#304848",
-      leafColor: "#283830",
-      foliageDark: "#0a1008",
-      mistOverlay: "rgba(40,100,150,0.22)",
-      accent: "#67e8f9",
-      glow: "rgba(60,200,180,0.18)",
-      particle: "snow",
+    name: "Akureyri, Iceland",
+    shortName: "Akureyri",
+    country: "Iceland",
+    coords: { lat: 65.6835, lon: -18.1105 },
+    timezone: "Atlantic/Reykjavik",
+    blurb: "Subarctic stillness, auroras over frozen meadow",
+    glyph: "A",
+    theme: {
+      label: "Subarctic frost",
+      lighting: "pale-arctic",
+      keyFeature: "Snow drift & aurora",
+      palette: {
+        "sky-top": "#1f2a44",
+        "sky-mid": "#3a4d6e",
+        "sky-low": "#6f8aa6",
+        "cloud":   "#cad8e0",
+        "sun-warm":"#cdd4dc",
+        "hill-far":"#7c8a98",
+        "hill-mid":"#a5b1bd",
+        "hill-near":"#cad5dc",
+        "tree-far":"#46586a",
+        "wall":    "#d8d4c8",
+        "thatch":  "#7c6a52",
+        "window-glow": "#fff1bd",
+        "leaf-deep": "#2f3e3b",
+        "leaf-cottage": "#5a7068",
+        "hud-text": "#f4eee0",
+        "hud-tint": "#1a2236",
+      },
     },
+    effects: { sun: "pale", snow: true, aurora: true, mist: "light" },
   },
   {
     id: "hualien",
-    name: "Hualien",
-    location: "Taiwan",
-    flag: "🇹🇼",
-    coordinates: { lat: 23.977, lon: 121.607 },
-    season: "Subtropical Storm",
-    mood: "Monsoon Thunder",
-    lighting: {
-      skyGradient:
-        "linear-gradient(180deg, #08100a 0%, #101a10 20%, #182818 40%, #1c3020 58%, #142218 78%, #0c1810 100%)",
-      atmosphericHaze: "rgba(60,120,80,0.22)",
-      mountainColor: "#2a4a28",
-      treeFar: "#0a2010",
-      treeMid: "#102818",
-      grassBase: "#2a5828",
-      grassShadow: "#1a3c18",
-      pathStone: "#584838",
-      pathStoneShadow: "#3c3028",
-      flowerPrimary: "#d040a0",
-      flowerSecondary: "#f06028",
-      flowerTertiary: "#38c060",
-      flowerCenter: "#ffd080",
-      stemColor: "#1a5020",
-      leafColor: "#206828",
-      foliageDark: "#082010",
-      mistOverlay: "rgba(40,80,55,0.32)",
-      accent: "#6ee7b7",
-      glow: "rgba(60,200,120,0.14)",
-      particle: "rain",
+    name: "Hualien, Taiwan",
+    shortName: "Hualien",
+    country: "Taiwan",
+    coords: { lat: 23.977, lon: 121.607 },
+    timezone: "Asia/Taipei",
+    blurb: "Subtropical thunder, mist climbing the mountainside",
+    glyph: "H",
+    theme: {
+      label: "Subtropical monsoon",
+      lighting: "storm-bright",
+      keyFeature: "Thunderhead & thick mist",
+      palette: {
+        "sky-top": "#34384a",
+        "sky-mid": "#566576",
+        "sky-low": "#8d9aa4",
+        "cloud":   "#b8c0c8",
+        "sun-warm":"#c9d1d8",
+        "hill-far":"#5e6f6c",
+        "hill-mid":"#6a8074",
+        "hill-near":"#5a7268",
+        "tree-far":"#3a4a40",
+        "wall":    "#dcc8a0",
+        "thatch":  "#7a4a32",
+        "window-glow": "#ffd989",
+        "leaf-deep": "#2e3e2c",
+        "leaf-cottage": "#577c4a",
+        "leaf-fresh": "#7a9c5a",
+        "hud-text": "#f4eee0",
+        "hud-tint": "#1c2a2c",
+      },
     },
+    effects: { sun: "diffuse", rain: "heavy", mist: "heavy" },
   },
   {
     id: "kyoto",
-    name: "Kyoto",
-    location: "Japan",
-    flag: "🇯🇵",
-    coordinates: { lat: 35.0116, lon: 135.7681 },
-    season: "Sakura Season",
-    mood: "Blossom Drift",
-    lighting: {
-      skyGradient:
-        "linear-gradient(180deg, #b898d0 0%, #d8b0d4 20%, #f0c8e0 40%, #f8d8e8 55%, #e0c0c0 68%, #98b040 80%, #709030 100%)",
-      atmosphericHaze: "rgba(240,180,210,0.25)",
-      mountainColor: "#a07898",
-      treeFar: "#5a3850",
-      treeMid: "#7a5068",
-      grassBase: "#88a838",
-      grassShadow: "#6a8830",
-      pathStone: "#c8a888",
-      pathStoneShadow: "#a88868",
-      flowerPrimary: "#f4a0c0",
-      flowerSecondary: "#f8d8e8",
-      flowerTertiary: "#e84880",
-      flowerCenter: "#ffd8e8",
-      stemColor: "#4a7818",
-      leafColor: "#5a9028",
-      foliageDark: "#382840",
-      mistOverlay: "rgba(220,180,210,0.18)",
-      accent: "#f9a8d4",
-      glow: "rgba(249,168,212,0.22)",
-      particle: "petals",
+    name: "Kyoto, Japan",
+    shortName: "Kyoto",
+    country: "Japan",
+    coords: { lat: 35.0116, lon: 135.7681 },
+    timezone: "Asia/Tokyo",
+    blurb: "Pink cosmos & drifting petals against dusk-pink roofs",
+    glyph: "K",
+    theme: {
+      label: "Seasonal poetics",
+      lighting: "soft-pastel",
+      keyFeature: "Cherry blossoms / maple leaves",
+      palette: {
+        "sky-top": "#e0c2c4",
+        "sky-mid": "#f1d2c8",
+        "sky-low": "#f8e4d2",
+        "cloud":   "#f7e8e4",
+        "sun-warm":"#f6c8b0",
+        "hill-far":"#a89fa0",
+        "hill-mid":"#8e9988",
+        "hill-near":"#788c7a",
+        "wall":    "#f4ecdf",
+        "thatch":  "#5a4e4a",
+        "window-glow": "#ffd989",
+        "leaf-deep": "#445242",
+        "leaf-cottage": "#7c9472",
+      },
     },
+    effects: { sun: "golden", blossoms: "cherry", mist: "light" },
   },
   {
     id: "manoa",
-    name: "Mānoa Falls",
-    location: "Hawaiʻi, USA",
-    flag: "🌺",
-    coordinates: { lat: 21.3331, lon: -157.8009 },
-    season: "Tropical Rainforest",
-    mood: "Emerald Canopy",
-    lighting: {
-      skyGradient:
-        "linear-gradient(180deg, #081a0c 0%, #102418 18%, #183020 38%, #1a3820 58%, #102818 78%, #081808 100%)",
-      atmosphericHaze: "rgba(40,120,70,0.22)",
-      mountainColor: "#1a4c22",
-      treeFar: "#0a2810",
-      treeMid: "#103818",
-      grassBase: "#1e5c28",
-      grassShadow: "#143c18",
-      pathStone: "#4a5840",
-      pathStoneShadow: "#2e3828",
-      flowerPrimary: "#e84830",
-      flowerSecondary: "#c030a0",
-      flowerTertiary: "#30d890",
-      flowerCenter: "#ffd060",
-      stemColor: "#186028",
-      leafColor: "#207830",
-      foliageDark: "#082010",
-      mistOverlay: "rgba(30,80,50,0.35)",
-      accent: "#34d399",
-      glow: "rgba(52,211,153,0.18)",
-      particle: "mist",
+    name: "Mānoa Falls, HI",
+    shortName: "Mānoa",
+    country: "United States",
+    coords: { lat: 21.3331, lon: -157.8009 },
+    timezone: "Pacific/Honolulu",
+    blurb: "Emerald rainforest, sun-shower rainbows over the falls",
+    glyph: "M",
+    theme: {
+      label: "Deep tropical rainforest",
+      lighting: "emerald-canopy",
+      keyFeature: "Mist, canopy light & sun-shower rainbow",
+      palette: {
+        "sky-top": "#5a8a8e",
+        "sky-mid": "#a8c5b4",
+        "sky-low": "#d8e6c8",
+        "cloud":   "#e8efd8",
+        "sun-warm":"#f6e0a4",
+        "hill-far":"#3e6a52",
+        "hill-mid":"#2e5840",
+        "hill-near":"#1f4630",
+        "tree-far":"#173626",
+        "wall":    "#d4c290",
+        "thatch":  "#5a3a26",
+        "window-glow": "#ffe78a",
+        "leaf-deep": "#1d3a22",
+        "leaf-cottage": "#3a6240",
+        "leaf-fresh": "#5a8a4a",
+        "leaf-sage": "#4a7858",
+      },
     },
+    effects: { sun: "tropical", rain: "shower", rainbow: true, mist: "heavy" },
   },
 ] as const;
 
-export const DEFAULT_BIOME = BIOMES[0];
+export const DEFAULT_BIOME_ID = "williamsburg";
+
+export function getBiome(id: string): Biome {
+  return BIOMES.find((b) => b.id === id) ?? BIOMES[0];
+}
