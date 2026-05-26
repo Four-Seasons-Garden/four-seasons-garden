@@ -6,6 +6,8 @@ import type { Session } from "@supabase/supabase-js";
 import { AppShell } from "@/app/components/AppShell";
 import { supabase } from "@/utils/supabase/client";
 
+const ADMIN_EMAIL = "rxyan2@wm.edu";
+
 type SyncResult = {
   dryRun?: boolean;
   fetchedRows?: number;
@@ -17,7 +19,7 @@ type SyncResult = {
 
 export default function GardenSutraPage() {
   const [session, setSession] = useState<Session | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(ADMIN_EMAIL);
   const [password, setPassword] = useState("");
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"idle" | "running">("idle");
