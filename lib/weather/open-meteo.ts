@@ -26,6 +26,15 @@ const DAILY_VARIABLES = [
   "sunset",
 ].join(",");
 
+const HOURLY_VARIABLES = [
+  "temperature_2m",
+  "precipitation",
+  "rain",
+  "showers",
+  "snowfall",
+  "weather_code",
+].join(",");
+
 export type TimeOfDay =
   | "dawn"
   | "morning"
@@ -62,6 +71,16 @@ type OpenMeteoDaily = {
   sunset: string[];
 };
 
+type OpenMeteoHourly = {
+  time: string[];
+  temperature_2m: number[];
+  precipitation: number[];
+  rain: number[];
+  showers: number[];
+  snowfall: number[];
+  weather_code: number[];
+};
+
 type OpenMeteoForecast = {
   latitude: number;
   longitude: number;
@@ -70,6 +89,10 @@ type OpenMeteoForecast = {
   timezone_abbreviation: string;
   current: OpenMeteoCurrent;
   daily: OpenMeteoDaily;
+};
+
+type OpenMeteoHourlyForecast = Omit<OpenMeteoForecast, "current" | "daily"> & {
+  hourly: OpenMeteoHourly;
 };
 
 export type LiveBiomeWeather = {
@@ -136,6 +159,32 @@ export type BiomeWeatherPayload = {
   provider: "Open-Meteo";
   fetchedAt: string;
   weather: Record<string, LiveBiomeWeather>;
+};
+
+export type HourlyBiomeWeather = {
+  biomeId: string;
+  locationName: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  forecastTimeLocal: string;
+  temperatureF: number;
+  precipitationIn: number;
+  rainIn: number;
+  showersIn: number;
+  snowfallIn: number;
+  weatherCode: number;
+  weatherLabel: string;
+  provider: "Open-Meteo";
+  fetchedAt: string;
+};
+
+export type HourlyWeatherPayload = {
+  provider: "Open-Meteo";
+  fetchedAt: string;
+  hoursPerBiome: number;
+  rows: HourlyBiomeWeather[];
 };
 
 function weatherLabel(code: number): string {
@@ -251,6 +300,19 @@ function buildForecastUrl() {
   return url;
 }
 
+function buildHourlyForecastUrl() {
+  const url = new URL(FORECAST_URL);
+  url.searchParams.set("latitude", BIOMES.map((biome) => biome.coords.lat).join(","));
+  url.searchParams.set("longitude", BIOMES.map((biome) => biome.coords.lon).join(","));
+  url.searchParams.set("hourly", HOURLY_VARIABLES);
+  url.searchParams.set("temperature_unit", "fahrenheit");
+  url.searchParams.set("precipitation_unit", "inch");
+  url.searchParams.set("timezone", "auto");
+  url.searchParams.set("past_days", "1");
+  url.searchParams.set("forecast_days", "7");
+  return url;
+}
+
 function normalizeWeather(
   forecast: OpenMeteoForecast,
   biome: (typeof BIOMES)[number],
@@ -348,5 +410,56 @@ export async function fetchBiomeWeather(): Promise<BiomeWeatherPayload> {
     provider: "Open-Meteo",
     fetchedAt: new Date().toISOString(),
     weather,
+  };
+}
+
+export async function fetchBiomeHourlyWeather(): Promise<HourlyWeatherPayload> {
+  const fetchedAt = new Date().toISOString();
+  const response = await fetch(buildHourlyForecastUrl(), {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Open-Meteo hourly request failed: ${response.status}`);
+  }
+
+  const forecasts = (await response.json()) as OpenMeteoHourlyForecast[];
+  if (!Array.isArray(forecasts) || forecasts.length !== BIOMES.length) {
+    throw new Error("Open-Meteo returned an unexpected hourly payload.");
+  }
+
+  const rows = forecasts.flatMap((forecast, biomeIndex) => {
+    const biome = BIOMES[biomeIndex];
+    return forecast.hourly.time.map((time, hourIndex) => {
+      const weatherCode = forecast.hourly.weather_code[hourIndex];
+      return {
+        biomeId: biome.id,
+        locationName: biome.name,
+        country: biome.country,
+        latitude: biome.coords.lat,
+        longitude: biome.coords.lon,
+        timezone: forecast.timezone,
+        forecastTimeLocal: time,
+        temperatureF: forecast.hourly.temperature_2m[hourIndex],
+        precipitationIn: forecast.hourly.precipitation[hourIndex] ?? 0,
+        rainIn: forecast.hourly.rain[hourIndex] ?? 0,
+        showersIn: forecast.hourly.showers[hourIndex] ?? 0,
+        snowfallIn: forecast.hourly.snowfall[hourIndex] ?? 0,
+        weatherCode,
+        weatherLabel: weatherLabel(weatherCode),
+        provider: "Open-Meteo" as const,
+        fetchedAt,
+      };
+    });
+  });
+
+  return {
+    provider: "Open-Meteo",
+    fetchedAt,
+    hoursPerBiome: forecasts[0]?.hourly.time.length ?? 0,
+    rows,
   };
 }

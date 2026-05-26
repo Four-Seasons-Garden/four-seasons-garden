@@ -3,6 +3,7 @@
    Watercolor cottage scene composed of layered SVG primitives, re-skinned
    per biome via CSS variables, plus per-biome weather particle effects. */
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
@@ -59,6 +60,13 @@ const FIREFLIES = Array.from({ length: 16 }).map(() => ({
     dur: (fireflyRandom() * 6 + 6) + "s",
     delay: (-fireflyRandom() * 8) + "s",
 }));
+
+const GARDEN_PLACES = [
+  { href: "/greenhouse", label: "Greenhouse", className: "hotspot-greenhouse" },
+  { href: "/nursery", label: "Nursery", className: "hotspot-nursery" },
+  { href: "/pond", label: "Pond", className: "hotspot-pond" },
+  { href: "/garden-sutra", label: "Garden Sutra", className: "hotspot-sutra" },
+];
 
 function fmtTemperature(value: number) {
   return `${Math.round(value)}°F`;
@@ -322,6 +330,23 @@ function BiomeEffects({
   );
 }
 
+function GardenHotspots() {
+  return (
+    <nav className="garden-hotspots" aria-label="Garden places">
+      {GARDEN_PLACES.map((place) => (
+        <Link
+          key={place.href}
+          href={place.href}
+          className={`garden-hotspot ${place.className}`}
+        >
+          <span className="pulse" />
+          <span className="hotspot-label">{place.label}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 /* ─────────── Page ─────────── */
 
 export default function Page() {
@@ -437,6 +462,7 @@ export default function Page() {
 
         {/* Z-70 HUD */}
         <div className="layer-hud">
+          <GardenHotspots />
           <div className="hud-mark">
             <span className="wm">Four Seasons <em>Garden</em></span>
             <span className="rule" />
