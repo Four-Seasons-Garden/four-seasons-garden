@@ -80,6 +80,60 @@ type LocationTrack = {
   lines: string[];
 };
 
+type TimedLyric = {
+  time: number;
+  text: string;
+};
+
+type YouTubePlayerState = {
+  PLAYING: number;
+  PAUSED: number;
+  ENDED: number;
+  BUFFERING: number;
+  CUED: number;
+};
+
+type YouTubePlayer = {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  destroy: () => void;
+  getCurrentTime: () => number;
+};
+
+type YouTubePlayerEvent = {
+  data: number;
+  target: YouTubePlayer;
+};
+
+type YouTubePlayerOptions = {
+  videoId: string;
+  width?: string | number;
+  height?: string | number;
+  playerVars?: Record<string, string | number>;
+  events?: {
+    onReady?: (event: { target: YouTubePlayer }) => void;
+    onStateChange?: (event: YouTubePlayerEvent) => void;
+    onError?: () => void;
+  };
+};
+
+type YouTubePlayerConstructor = new (
+  element: HTMLElement | string,
+  options: YouTubePlayerOptions,
+) => YouTubePlayer;
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: YouTubePlayerConstructor;
+      PlayerState: YouTubePlayerState;
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+let youtubeApiPromise: Promise<void> | null = null;
+
 const LOCATION_TRACKS: Partial<Record<string, LocationTrack>> = {
   akureyri: {
     title: "冰雨",
@@ -281,49 +335,119 @@ function liveTimeOfDay(weather?: LiveBiomeWeather, now?: Date | null): TimeOfDay
   );
 }
 
-function youtubeEmbedUrl(videoId: string) {
-  const params = new URLSearchParams({
-    autoplay: "1",
-    controls: "1",
-    loop: "1",
-    playlist: videoId,
-    playsinline: "1",
-    rel: "0",
-  });
+function loadYouTubeIframeApi() {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.YT?.Player) return Promise.resolve();
 
-  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+  if (!youtubeApiPromise) {
+    youtubeApiPromise = new Promise((resolve) => {
+      const previousReady = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previousReady?.();
+        resolve();
+      };
+
+      const existing = document.querySelector<HTMLScriptElement>(
+        'script[src="https://www.youtube.com/iframe_api"]',
+      );
+      if (existing) return;
+
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.async = true;
+      document.head.appendChild(script);
+    });
+  }
+
+  return youtubeApiPromise;
 }
 
-function parseLrcLines(text: string) {
-  return text
+function parseLrcEntries(text: string): TimedLyric[] {
+  const timestampPattern = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
+  const entries = text
     .split(/\r?\n/)
-    .map((line) => line.replace(/^\[\d{2}:\d{2}(?:\.\d{2})?\]/, "").trim())
-    .filter(Boolean);
+    .flatMap((line) => {
+      const matches = Array.from(line.matchAll(timestampPattern));
+      const lyric = line.replace(timestampPattern, "").trim();
+      if (matches.length === 0 || !lyric) return [];
+
+      return matches.map((match) => {
+        const minutes = Number(match[1]);
+        const seconds = Number(match[2]);
+        const fraction = Number(`0.${match[3] ?? "0"}`);
+        return {
+          time: minutes * 60 + seconds + fraction,
+          text: lyric,
+        };
+      });
+    })
+    .sort((a, b) => a.time - b.time);
+
+  return entries;
+}
+
+function fallbackLyrics(lines: string[]): TimedLyric[] {
+  return lines.map((line, index) => ({
+    time: index * 8,
+    text: line,
+  }));
+}
+
+function activeLyricIndex(entries: TimedLyric[], currentTime: number) {
+  if (entries.length === 0) return -1;
+
+  let index = 0;
+  for (let next = 0; next < entries.length; next += 1) {
+    if (entries[next].time > currentTime) break;
+    index = next;
+  }
+
+  return index;
+}
+
+function visibleLyrics(entries: TimedLyric[], activeIndex: number) {
+  if (entries.length === 0) return [];
+
+  const clampedActive = Math.max(0, activeIndex);
+  const start = Math.max(0, Math.min(clampedActive - 1, entries.length - 4));
+  return entries.slice(start, start + 4).map((entry, offset) => ({
+    entry,
+    index: start + offset,
+  }));
 }
 
 function LocationMusic({ track }: { track?: LocationTrack }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const youtubeMountRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
+  const pendingYoutubePlayRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [audioNote, setAudioNote] = useState<string | null>(null);
-  const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; lines: string[] } | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; entries: TimedLyric[] } | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
-    return () => audio?.pause();
+    const youtubePlayer = youtubePlayerRef.current;
+    return () => {
+      audio?.pause();
+      youtubePlayer?.destroy();
+    };
   }, []);
 
   useEffect(() => {
     let active = true;
+    const lyricsUrl = track?.lyricsUrl;
 
-    if (!track?.lyricsUrl) return;
+    if (!lyricsUrl) return;
 
-    fetch(track.lyricsUrl)
+    fetch(lyricsUrl)
       .then((response) => response.ok ? response.text() : "")
       .then((text) => {
         if (!active || !text) return;
-        const parsed = parseLrcLines(text);
-        if (parsed.length > 0 && track.lyricsUrl) {
-          setLoadedLyrics({ url: track.lyricsUrl, lines: parsed });
+        const parsed = parseLrcEntries(text);
+        if (parsed.length > 0) {
+          setLoadedLyrics({ url: lyricsUrl, entries: parsed });
         }
       })
       .catch(() => undefined);
@@ -331,17 +455,103 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
     return () => {
       active = false;
     };
-  }, [track]);
+  }, [track?.lyricsUrl]);
+
+  useEffect(() => {
+    const videoId = track?.youtubeId;
+    const mount = youtubeMountRef.current;
+    if (!videoId || !mount) return;
+
+    let active = true;
+
+    loadYouTubeIframeApi().then(() => {
+      if (!active || !window.YT?.Player || !youtubeMountRef.current) return;
+
+      youtubePlayerRef.current = new window.YT.Player(youtubeMountRef.current, {
+        videoId,
+        width: "100%",
+        height: 200,
+        playerVars: {
+          controls: 1,
+          loop: 1,
+          playlist: videoId,
+          playsinline: 1,
+          rel: 0,
+        },
+        events: {
+          onReady: (event) => {
+            if (!active) return;
+            youtubePlayerRef.current = event.target;
+            setAudioNote(null);
+            if (pendingYoutubePlayRef.current) {
+              pendingYoutubePlayRef.current = false;
+              event.target.playVideo();
+            }
+          },
+          onStateChange: (event) => {
+            const state = window.YT?.PlayerState;
+            if (!state) return;
+            if (event.data === state.PLAYING) setPlaying(true);
+            if (event.data === state.PAUSED || event.data === state.CUED) setPlaying(false);
+            if (event.data === state.ENDED) {
+              event.target.playVideo();
+            }
+          },
+          onError: () => {
+            setAudioNote("Open on YouTube");
+            setPlaying(false);
+          },
+        },
+      });
+    });
+
+    return () => {
+      active = false;
+      pendingYoutubePlayRef.current = false;
+      const player = youtubePlayerRef.current;
+      youtubePlayerRef.current = null;
+      player?.destroy();
+    };
+  }, [track?.youtubeId]);
+
+  useEffect(() => {
+    if (!playing) return;
+
+    const interval = window.setInterval(() => {
+      const youtubeTime = youtubePlayerRef.current?.getCurrentTime();
+      if (typeof youtubeTime === "number") {
+        setCurrentTime(youtubeTime);
+        return;
+      }
+
+      if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+    }, 350);
+
+    return () => window.clearInterval(interval);
+  }, [playing]);
 
   if (!track) return null;
-  const displayLines =
+  const lyricEntries =
     loadedLyrics && loadedLyrics.url === track.lyricsUrl
-      ? loadedLyrics.lines
-      : track.lines;
+      ? loadedLyrics.entries
+      : fallbackLyrics(track.lines);
+  const activeIndex = activeLyricIndex(lyricEntries, currentTime);
+  const lyricWindow = visibleLyrics(lyricEntries, activeIndex);
 
   async function toggleMusic() {
     if (track?.youtubeId) {
-      setPlaying((current) => !current);
+      const player = youtubePlayerRef.current;
+      if (!player) {
+        pendingYoutubePlayRef.current = true;
+        setAudioNote("Loading player");
+        return;
+      }
+
+      if (playing) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
       setAudioNote(null);
       return;
     }
@@ -376,6 +586,9 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
           loop
           preload="none"
           onEnded={() => setPlaying(false)}
+          onPause={() => setPlaying(false)}
+          onPlay={() => setPlaying(true)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
           onError={() => {
             setPlaying(false);
             setAudioNote("Add licensed audio");
@@ -398,20 +611,21 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
         </button>
       </div>
       <div className="lyric-rain" aria-label={`${track.title} lyric rain`}>
-        <div className="lyric-rain-track">
-          {[...displayLines, ...displayLines].map((line, index) => (
-            <span key={`${line}-${index}`}>{line}</span>
+        <div className="synced-lyrics">
+          {lyricWindow.map(({ entry, index }) => (
+            <span
+              key={`${entry.time}-${entry.text}`}
+              className={index === activeIndex ? "is-current" : ""}
+            >
+              {entry.text}
+            </span>
           ))}
         </div>
       </div>
-      {playing && track.youtubeId && (
-        <iframe
-          className="youtube-loop-player"
-          src={youtubeEmbedUrl(track.youtubeId)}
-          title={`${track.title} - ${track.artist}`}
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowFullScreen
-        />
+      {track.youtubeId && (
+        <div className="youtube-loop-player" aria-label={`${track.title} YouTube player`}>
+          <div ref={youtubeMountRef} />
+        </div>
       )}
       {track.youtubeUrl && (
         <a className="youtube-link" href={track.youtubeUrl} target="_blank" rel="noreferrer">
