@@ -4,6 +4,7 @@
    per biome via CSS variables, plus per-biome weather particle effects. */
 
 import Link from "next/link";
+import { Volume2, VolumeX } from "lucide-react";
 import { Solar } from "lunar-typescript";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -68,6 +69,33 @@ const GARDEN_PLACES = [
   { href: "/pond", label: "Pond", className: "hotspot-pond" },
   { href: "/garden-sutra", label: "Garden Sutra", className: "hotspot-sutra" },
 ];
+
+type LocationTrack = {
+  title: string;
+  artist: string;
+  src?: string;
+  youtubeId?: string;
+  youtubeUrl?: string;
+  lyricsUrl?: string;
+  lines: string[];
+};
+
+const LOCATION_TRACKS: Partial<Record<string, LocationTrack>> = {
+  akureyri: {
+    title: "冰雨",
+    artist: "刘德华",
+    src: "/audio/akureyri-bing-yu.mp3",
+    youtubeId: "90zAJ4tFSy8",
+    youtubeUrl: "https://youtu.be/90zAJ4tFSy8",
+    lyricsUrl: "/audio/akureyri-bing-yu.lrc",
+    lines: [
+      "冰色的雨落进北方花园",
+      "极光把夜色轻轻照亮",
+      "玻璃温室听见雪的回声",
+      "一行一行，像雨慢慢往下",
+    ],
+  },
+};
 
 function fmtTemperature(value: number) {
   return `${Math.round(value)}°F`;
@@ -253,6 +281,148 @@ function liveTimeOfDay(weather?: LiveBiomeWeather, now?: Date | null): TimeOfDay
   );
 }
 
+function youtubeEmbedUrl(videoId: string) {
+  const params = new URLSearchParams({
+    autoplay: "1",
+    controls: "1",
+    loop: "1",
+    playlist: videoId,
+    playsinline: "1",
+    rel: "0",
+  });
+
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
+function parseLrcLines(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\[\d{2}:\d{2}(?:\.\d{2})?\]/, "").trim())
+    .filter(Boolean);
+}
+
+function LocationMusic({ track }: { track?: LocationTrack }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [audioNote, setAudioNote] = useState<string | null>(null);
+  const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; lines: string[] } | null>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    return () => audio?.pause();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!track?.lyricsUrl) return;
+
+    fetch(track.lyricsUrl)
+      .then((response) => response.ok ? response.text() : "")
+      .then((text) => {
+        if (!active || !text) return;
+        const parsed = parseLrcLines(text);
+        if (parsed.length > 0 && track.lyricsUrl) {
+          setLoadedLyrics({ url: track.lyricsUrl, lines: parsed });
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [track]);
+
+  if (!track) return null;
+  const displayLines =
+    loadedLyrics && loadedLyrics.url === track.lyricsUrl
+      ? loadedLyrics.lines
+      : track.lines;
+
+  async function toggleMusic() {
+    if (track?.youtubeId) {
+      setPlaying((current) => !current);
+      setAudioNote(null);
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      setAudioNote(null);
+      return;
+    }
+
+    try {
+      audio.volume = 0.28;
+      await audio.play();
+      setPlaying(true);
+      setAudioNote(null);
+    } catch {
+      setPlaying(false);
+      setAudioNote("Add licensed audio");
+    }
+  }
+
+  return (
+    <div className="hud-music-card" data-playing={playing}>
+      {track.src && !track.youtubeId && (
+        <audio
+          ref={audioRef}
+          src={track.src}
+          loop
+          preload="none"
+          onEnded={() => setPlaying(false)}
+          onError={() => {
+            setPlaying(false);
+            setAudioNote("Add licensed audio");
+          }}
+        />
+      )}
+      <div className="hud-trackline">
+        <div>
+          <small>Background music</small>
+          <b>{track.title} · {track.artist}</b>
+        </div>
+        <button
+          className="music-toggle"
+          type="button"
+          onClick={toggleMusic}
+          aria-label={playing ? "Mute background music" : "Play background music"}
+          title={playing ? "Mute" : "Play"}
+        >
+          {playing ? <Volume2 size={14} /> : <VolumeX size={14} />}
+        </button>
+      </div>
+      <div className="lyric-rain" aria-label={`${track.title} lyric rain`}>
+        <div className="lyric-rain-track">
+          {[...displayLines, ...displayLines].map((line, index) => (
+            <span key={`${line}-${index}`}>{line}</span>
+          ))}
+        </div>
+      </div>
+      {playing && track.youtubeId && (
+        <iframe
+          className="youtube-loop-player"
+          src={youtubeEmbedUrl(track.youtubeId)}
+          title={`${track.title} - ${track.artist}`}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      )}
+      {track.youtubeUrl && (
+        <a className="youtube-link" href={track.youtubeUrl} target="_blank" rel="noreferrer">
+          Open on YouTube
+        </a>
+      )}
+      {audioNote && <span className="music-note">{audioNote}</span>}
+    </div>
+  );
+}
+
 /* ─────────── HUD chips ─────────── */
 
 function HudWeather({
@@ -284,6 +454,7 @@ function HudWeather({
   const timezone = weather?.resolvedLocation.timezone ?? biome.timezone;
   const localClock = now ? formatZonedClock(now, timezone) : "--:--:--";
   const almanac = buildAlmanac(now, timezone);
+  const track = LOCATION_TRACKS[biome.id];
   const label =
     weather ? `${biome.shortName} · ${localClock}` :
     status === "error" ? "Live · unavailable" :
@@ -327,16 +498,17 @@ function HudWeather({
           <span className="val">{value}</span>
           <span className="detail">{detail}</span>
         </span>
-        <span className="hud-date-parts" aria-label="Gregorian date">
-          <span><b>{almanac?.gregorian.year ?? "----"}</b><small>Year</small></span>
-          <span><b>{almanac?.gregorian.month ?? "---"}</b><small>Month</small></span>
-          <span><b>{almanac?.gregorian.day ?? "--"}</b><small>Day</small></span>
-          <span><b>{almanac?.gregorian.weekday ?? "---"}</b><small>Weekday</small></span>
-        </span>
         <svg className={`chev ${open ? "open" : ""}`} width="12" height="8" viewBox="0 0 12 8" fill="none" aria-hidden="true">
           <path d="M1 1.5 L6 6.5 L11 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+
+      <div className="hud-date-parts" aria-label="Gregorian date">
+        <span><b>{almanac?.gregorian.year ?? "----"}</b><small>Year</small></span>
+        <span><b>{almanac?.gregorian.month ?? "---"}</b><small>Month</small></span>
+        <span><b>{almanac?.gregorian.day ?? "--"}</b><small>Day</small></span>
+        <span><b>{almanac?.gregorian.weekday ?? "---"}</b><small>Weekday</small></span>
+      </div>
 
       <div className="hud-almanac" aria-label="Chinese lunar almanac">
         <span>
@@ -346,14 +518,6 @@ function HudWeather({
         <span>
           <small>八字</small>
           <b>{almanac?.pillars.join(" ") ?? "---- -- -- --"}</b>
-        </span>
-        <span>
-          <small>时柱</small>
-          <b>{almanac?.timePillar ?? "--"}</b>
-        </span>
-        <span>
-          <small>节气</small>
-          <b>{almanac?.jieQi ?? "—"}</b>
         </span>
       </div>
 
@@ -394,6 +558,8 @@ function HudWeather({
           })}
         </div>
       )}
+
+      <LocationMusic key={track?.src ?? "silent"} track={track} />
     </div>
   );
 }
