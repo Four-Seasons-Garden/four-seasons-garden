@@ -7,7 +7,11 @@ import Link from "next/link";
 import { Volume2, VolumeX } from "lucide-react";
 import { Solar } from "lunar-typescript";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type {
+  CSSProperties,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   BIOMES,
   DEFAULT_BIOME_ID,
@@ -70,19 +74,43 @@ const GARDEN_PLACES = [
   { href: "/garden-sutra", label: "Garden Sutra", className: "hotspot-sutra" },
 ];
 
+type GardenPlace = (typeof GARDEN_PLACES)[number];
+
 type LocationTrack = {
+  id?: string;
+  biomeId?: string;
   title: string;
   artist: string;
   src?: string;
   youtubeId?: string;
   youtubeUrl?: string;
   lyricsUrl?: string;
-  lines: string[];
+  lines?: string[];
 };
 
 type TimedLyric = {
   time: number;
   text: string;
+};
+
+type DragPosition = {
+  x: number;
+  y: number;
+};
+
+type DragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  baseLeft: number;
+  baseTop: number;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  moved: boolean;
 };
 
 type YouTubePlayerState = {
@@ -134,8 +162,10 @@ declare global {
 
 let youtubeApiPromise: Promise<void> | null = null;
 
-const LOCATION_TRACKS: Partial<Record<string, LocationTrack>> = {
-  akureyri: {
+const FALLBACK_LOCATION_TRACKS: Partial<Record<string, LocationTrack[]>> = {
+  akureyri: [{
+    id: "akureyri-bing-yu",
+    biomeId: "akureyri",
     title: "冰雨",
     artist: "刘德华",
     src: "/audio/akureyri-bing-yu.mp3",
@@ -148,8 +178,158 @@ const LOCATION_TRACKS: Partial<Record<string, LocationTrack>> = {
       "玻璃温室听见雪的回声",
       "一行一行，像雨慢慢往下",
     ],
-  },
+  }],
 };
+
+const DRAG_STORAGE_PREFIX = "four-seasons:front-page-drag:v1";
+const DRAG_THRESHOLD = 4;
+
+function clamp(value: number, min: number, max: number) {
+  if (min > max) return value;
+  return Math.min(max, Math.max(min, value));
+}
+
+function readStoredDragPosition(key: string): DragPosition {
+  if (typeof window === "undefined") return { x: 0, y: 0 };
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(`${DRAG_STORAGE_PREFIX}:${key}`) ?? "");
+    if (
+      typeof parsed?.x === "number" &&
+      Number.isFinite(parsed.x) &&
+      typeof parsed?.y === "number" &&
+      Number.isFinite(parsed.y)
+    ) {
+      return { x: parsed.x, y: parsed.y };
+    }
+  } catch {
+    return { x: 0, y: 0 };
+  }
+
+  return { x: 0, y: 0 };
+}
+
+function writeStoredDragPosition(key: string, position: DragPosition) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${DRAG_STORAGE_PREFIX}:${key}`, JSON.stringify(position));
+  } catch {
+    // Dragging should still work even if the browser blocks localStorage.
+  }
+}
+
+function useSceneDraggable(key: string) {
+  const [position, setPosition] = useState<DragPosition>({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const positionRef = useRef(position);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const stored = readStoredDragPosition(key);
+      positionRef.current = stored;
+      setPosition(stored);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [key]);
+
+  function commitPosition(next: DragPosition) {
+    positionRef.current = next;
+    setPosition(next);
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (event.button !== 0) return;
+
+    const element = event.currentTarget;
+    const parent = element.offsetParent instanceof HTMLElement
+      ? element.offsetParent
+      : element.parentElement;
+    const elementRect = element.getBoundingClientRect();
+    const parentRect = parent?.getBoundingClientRect() ?? {
+      left: 0,
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+    };
+    const origin = positionRef.current;
+    const baseLeft = elementRect.left - origin.x;
+    const baseTop = elementRect.top - origin.y;
+    const margin = 8;
+
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: origin.x,
+      originY: origin.y,
+      baseLeft,
+      baseTop,
+      minX: parentRect.left + margin - baseLeft,
+      maxX: parentRect.right - margin - elementRect.width - baseLeft,
+      minY: parentRect.top + margin - baseTop,
+      maxY: parentRect.bottom - margin - elementRect.height - baseTop,
+      moved: false,
+    };
+
+    element.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
+
+    drag.moved = true;
+    suppressClickRef.current = true;
+    setDragging(true);
+    event.preventDefault();
+
+    commitPosition({
+      x: clamp(drag.originX + deltaX, drag.minX, drag.maxX),
+      y: clamp(drag.originY + deltaY, drag.minY, drag.maxY),
+    });
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    dragRef.current = null;
+    setDragging(false);
+    if (drag.moved) writeStoredDragPosition(key, positionRef.current);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function onClickCapture(event: ReactMouseEvent<HTMLElement>) {
+    if (!suppressClickRef.current) return;
+
+    suppressClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  return {
+    className: "draggable-scene-item",
+    "data-dragging": dragging ? "true" : undefined,
+    style: {
+      "--drag-x": `${position.x}px`,
+      "--drag-y": `${position.y}px`,
+    } as CSSProperties,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: endDrag,
+    onPointerCancel: endDrag,
+    onClickCapture,
+  };
+}
 
 function fmtTemperature(value: number) {
   return `${Math.round(value)}°F`;
@@ -416,16 +596,19 @@ function visibleLyrics(entries: TimedLyric[], activeIndex: number) {
   }));
 }
 
-function LocationMusic({ track }: { track?: LocationTrack }) {
+function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const youtubeMountRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
   const pendingYoutubePlayRef = useRef(false);
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [songMenuOpen, setSongMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [audioNote, setAudioNote] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; entries: TimedLyric[] } | null>(null);
+  const track = tracks.find((item) => (item.id ?? item.youtubeId ?? item.title) === selectedTrackId) ?? tracks[0];
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -461,7 +644,7 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
   useEffect(() => {
     const videoId = track?.youtubeId;
     const mount = youtubeMountRef.current;
-    if (!videoId || !mount) return;
+    if (!videoId || !expanded || !mount) return;
 
     let active = true;
 
@@ -513,7 +696,7 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
       youtubePlayerRef.current = null;
       player?.destroy();
     };
-  }, [track?.youtubeId]);
+  }, [track?.youtubeId, expanded]);
 
   useEffect(() => {
     if (!playing) return;
@@ -535,12 +718,14 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
   const lyricEntries =
     loadedLyrics && loadedLyrics.url === track.lyricsUrl
       ? loadedLyrics.entries
-      : fallbackLyrics(track.lines);
+      : fallbackLyrics(track.lines ?? []);
   const activeIndex = activeLyricIndex(lyricEntries, currentTime);
   const lyricWindow = visibleLyrics(lyricEntries, activeIndex);
 
   async function toggleMusic() {
     if (track?.youtubeId) {
+      if (!expanded) setExpanded(true);
+
       const player = youtubePlayerRef.current;
       if (!player) {
         pendingYoutubePlayRef.current = true;
@@ -597,12 +782,39 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
         />
       )}
       <div className="hud-trackline">
-        <b>{track.title} · {track.artist}</b>
+        <button
+          className="music-title-button"
+          type="button"
+          onClick={() => setSongMenuOpen((current) => !current)}
+          aria-haspopup="listbox"
+          aria-expanded={songMenuOpen}
+          title="Choose song"
+        >
+          <b>{track.title}</b>
+          {track.artist && <small>{track.artist}</small>}
+        </button>
         <div className="music-actions">
+          <button
+            className="music-toggle music-picker-toggle"
+            type="button"
+            onClick={() => setSongMenuOpen((current) => !current)}
+            aria-label="Choose song"
+            aria-expanded={songMenuOpen}
+            title="Choose song"
+          >
+            ♪
+          </button>
           <button
             className="music-toggle music-fold"
             type="button"
-            onClick={() => setExpanded((current) => !current)}
+            onClick={() => {
+              if (expanded) {
+                youtubePlayerRef.current?.pauseVideo();
+                pendingYoutubePlayRef.current = false;
+                setPlaying(false);
+              }
+              setExpanded(!expanded);
+            }}
             aria-label={expanded ? "Collapse music details" : "Expand music details"}
             aria-expanded={expanded}
             title={expanded ? "Collapse" : "Expand"}
@@ -621,19 +833,50 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
         </div>
       </div>
 
-      <div className="music-details" aria-hidden={!expanded}>
-        <div className="lyric-rain" aria-label={`${track.title} lyric rain`}>
-          <div className="synced-lyrics">
-            {lyricWindow.map(({ entry, index }) => (
-              <span
-                key={`${entry.time}-${entry.text}`}
-                className={index === activeIndex ? "is-current" : ""}
+      {songMenuOpen && (
+        <div className="music-song-menu" role="listbox" aria-label="Choose background song">
+          {tracks.map((candidate) => {
+            const key = candidate.id ?? candidate.youtubeId ?? candidate.title;
+            const active = key === (track.id ?? track.youtubeId ?? track.title);
+
+            return (
+              <button
+                key={key}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  youtubePlayerRef.current?.pauseVideo();
+                  setSelectedTrackId(key);
+                  setSongMenuOpen(false);
+                  setCurrentTime(0);
+                  setPlaying(false);
+                  setAudioNote(null);
+                }}
               >
-                {entry.text}
-              </span>
-            ))}
-          </div>
+                <span>{candidate.title}</span>
+                <small>{candidate.artist || "YouTube"}</small>
+              </button>
+            );
+          })}
         </div>
+      )}
+
+      <div className="music-details" aria-hidden={!expanded}>
+        {!track.youtubeId && (
+          <div className="lyric-rain" aria-label={`${track.title} lyric rain`}>
+            <div className="synced-lyrics">
+              {lyricWindow.map(({ entry, index }) => (
+                <span
+                  key={`${entry.time}-${entry.text}`}
+                  className={index === activeIndex ? "is-current" : ""}
+                >
+                  {entry.text}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         {track.youtubeUrl && (
           <a className="youtube-link" href={track.youtubeUrl} target="_blank" rel="noreferrer">
             Open on YouTube
@@ -642,7 +885,7 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
         {audioNote && <span className="music-note">{audioNote}</span>}
       </div>
 
-      {track.youtubeId && (
+      {track.youtubeId && expanded && (
         <div className="youtube-loop-player" aria-label={`${track.title} YouTube player`}>
           <div ref={youtubeMountRef} />
         </div>
@@ -657,6 +900,7 @@ function HudWeather({
   biome,
   weather,
   weatherByBiome,
+  musicTracks,
   status,
   now,
   timeOfDay,
@@ -665,11 +909,13 @@ function HudWeather({
   biome: Biome;
   weather?: LiveBiomeWeather;
   weatherByBiome: Record<string, LiveBiomeWeather>;
+  musicTracks: LocationTrack[];
   status: "loading" | "ready" | "error";
   now: Date | null;
   timeOfDay: TimeOfDay;
   onChange: (id: string) => void;
 }) {
+  const { className: dragClassName, ...dragProps } = useSceneDraggable("weather-panel");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const signal = weatherSignal(weather);
@@ -682,7 +928,6 @@ function HudWeather({
   const timezone = weather?.resolvedLocation.timezone ?? biome.timezone;
   const localClock = now ? formatZonedClock(now, timezone) : "--:--:--";
   const almanac = buildAlmanac(now, timezone);
-  const track = LOCATION_TRACKS[biome.id];
   const label =
     weather ? `${biome.shortName} · ${localClock}` :
     status === "error" ? "Live · unavailable" :
@@ -711,7 +956,7 @@ function HudWeather({
   }, [open]);
 
   return (
-    <div className="hud-weather-panel" ref={ref}>
+    <div className={`hud-weather-panel ${dragClassName}`} ref={ref} {...dragProps}>
       <button
         className="hud-weather"
         aria-haspopup="listbox"
@@ -787,7 +1032,21 @@ function HudWeather({
         </div>
       )}
 
-      <LocationMusic key={track?.src ?? "silent"} track={track} />
+      <LocationMusic key={biome.id} tracks={musicTracks} />
+    </div>
+  );
+}
+
+function HudMark({ biome }: { biome: Biome }) {
+  const { className: dragClassName, ...dragProps } = useSceneDraggable("garden-mark");
+
+  return (
+    <div className={`hud-mark ${dragClassName}`} {...dragProps}>
+      <span className="wm">Four Seasons <em>Garden</em></span>
+      <span className="rule" />
+      <span className="tag">
+        {fmtCoord(biome.coords.lat, "N", "S")} · {fmtCoord(biome.coords.lon, "E", "W")}
+      </span>
     </div>
   );
 }
@@ -819,18 +1078,26 @@ function BiomeEffects({
   );
 }
 
+function GardenHotspot({ place }: { place: GardenPlace }) {
+  const { className: dragClassName, ...dragProps } = useSceneDraggable(`place-link:${place.href}`);
+
+  return (
+    <Link
+      href={place.href}
+      className={`garden-hotspot ${place.className} ${dragClassName}`}
+      {...dragProps}
+    >
+      <span className="pulse" />
+      <span className="hotspot-label">{place.label}</span>
+    </Link>
+  );
+}
+
 function GardenHotspots() {
   return (
     <nav className="garden-hotspots" aria-label="Garden places">
       {GARDEN_PLACES.map((place) => (
-        <Link
-          key={place.href}
-          href={place.href}
-          className={`garden-hotspot ${place.className}`}
-        >
-          <span className="pulse" />
-          <span className="hotspot-label">{place.label}</span>
-        </Link>
+        <GardenHotspot key={place.href} place={place} />
       ))}
     </nav>
   );
@@ -841,10 +1108,12 @@ function GardenHotspots() {
 export default function Page() {
   const [biomeId, setBiomeId] = useState<string>(DEFAULT_BIOME_ID);
   const [weatherByBiome, setWeatherByBiome] = useState<Record<string, LiveBiomeWeather>>({});
+  const [musicByBiome, setMusicByBiome] = useState<Record<string, LocationTrack[]>>({});
   const [weatherStatus, setWeatherStatus] = useState<"loading" | "ready" | "error">("loading");
   const now = usePreciseClock();
   const biome = useMemo(() => getBiome(biomeId), [biomeId]);
   const weather = weatherByBiome[biome.id];
+  const activeMusicTracks = musicByBiome[biome.id] ?? FALLBACK_LOCATION_TRACKS[biome.id] ?? [];
   const timeOfDay = liveTimeOfDay(weather, now);
   const currentWeatherKind = weatherKind(weather);
 
@@ -873,6 +1142,27 @@ export default function Page() {
     return () => {
       active = false;
       window.clearInterval(refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadMusic() {
+      try {
+        const response = await fetch("/api/music/playlists");
+        if (!response.ok) throw new Error(`Music request failed: ${response.status}`);
+        const payload = (await response.json()) as { byBiome?: Record<string, LocationTrack[]> };
+        if (active && payload.byBiome) setMusicByBiome(payload.byBiome);
+      } catch (error) {
+        console.error("[Four Seasons Garden] music playlists unavailable", error);
+      }
+    }
+
+    loadMusic();
+
+    return () => {
+      active = false;
     };
   }, []);
 
@@ -952,17 +1242,12 @@ export default function Page() {
         {/* Z-70 HUD */}
         <div className="layer-hud">
           <GardenHotspots />
-          <div className="hud-mark">
-            <span className="wm">Four Seasons <em>Garden</em></span>
-            <span className="rule" />
-            <span className="tag">
-              {fmtCoord(biome.coords.lat, "N", "S")} · {fmtCoord(biome.coords.lon, "E", "W")}
-            </span>
-          </div>
+          <HudMark biome={biome} />
           <HudWeather
             biome={biome}
             weather={weather}
             weatherByBiome={weatherByBiome}
+            musicTracks={activeMusicTracks}
             status={weatherStatus}
             now={now}
             timeOfDay={timeOfDay}

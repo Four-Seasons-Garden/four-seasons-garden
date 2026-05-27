@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppShell } from "@/app/components/AppShell";
+import { BIOMES, DEFAULT_BIOME_ID } from "@/lib/constants/biomes";
 import { supabase } from "@/utils/supabase/client";
 
 const ADMIN_EMAIL = "rxyan2@wm.edu";
@@ -17,6 +18,24 @@ type SyncResult = {
   error?: string;
 };
 
+type MusicTrack = {
+  id: string;
+  biomeId: string;
+  title: string;
+  artist: string;
+  youtubeId: string;
+  youtubeUrl: string;
+  sortOrder: number;
+};
+
+type MusicPayload = {
+  tracks?: MusicTrack[];
+  byBiome?: Record<string, MusicTrack[]>;
+  track?: MusicTrack;
+  deleted?: string;
+  error?: string;
+};
+
 export default function GardenSutraPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState(ADMIN_EMAIL);
@@ -24,6 +43,13 @@ export default function GardenSutraPage() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"idle" | "running">("idle");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [musicByBiome, setMusicByBiome] = useState<Record<string, MusicTrack[]>>({});
+  const [musicStatus, setMusicStatus] = useState<"idle" | "loading" | "saving">("loading");
+  const [musicMessage, setMusicMessage] = useState<string | null>(null);
+  const [musicBiomeId, setMusicBiomeId] = useState(DEFAULT_BIOME_ID);
+  const [musicTitle, setMusicTitle] = useState("");
+  const [musicArtist, setMusicArtist] = useState("");
+  const [musicUrl, setMusicUrl] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -39,6 +65,49 @@ export default function GardenSutraPage() {
     return () => {
       active = false;
       listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function loadMusic(showLoading = true) {
+    if (showLoading) {
+      setMusicStatus("loading");
+      setMusicMessage(null);
+    }
+
+    try {
+      const response = await fetch("/api/music/playlists");
+      const result = (await response.json()) as MusicPayload;
+      if (!response.ok) throw new Error(result.error ?? "Unable to load playlists.");
+      setMusicByBiome(result.byBiome ?? {});
+    } catch (error) {
+      setMusicMessage(error instanceof Error ? error.message : "Unable to load playlists.");
+    } finally {
+      setMusicStatus("idle");
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialMusic() {
+      try {
+        const response = await fetch("/api/music/playlists");
+        const result = (await response.json()) as MusicPayload;
+        if (!response.ok) throw new Error(result.error ?? "Unable to load playlists.");
+        if (!active) return;
+        setMusicByBiome(result.byBiome ?? {});
+        setMusicMessage(null);
+      } catch (error) {
+        if (active) setMusicMessage(error instanceof Error ? error.message : "Unable to load playlists.");
+      } finally {
+        if (active) setMusicStatus("idle");
+      }
+    }
+
+    loadInitialMusic();
+
+    return () => {
+      active = false;
     };
   }, []);
 
@@ -71,6 +140,70 @@ export default function GardenSutraPage() {
       setSyncResult({ error: error instanceof Error ? error.message : "Sync failed." });
     } finally {
       setSyncStatus("idle");
+    }
+  }
+
+  async function addMusicTrack(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    setMusicStatus("saving");
+    setMusicMessage(null);
+
+    try {
+      const response = await fetch("/api/music/playlists", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          biomeId: musicBiomeId,
+          title: musicTitle,
+          artist: musicArtist,
+          youtubeUrl: musicUrl,
+          sortOrder: (musicByBiome[musicBiomeId]?.length ?? 0) * 10 + 10,
+        }),
+      });
+      const result = (await response.json()) as MusicPayload;
+      if (!response.ok) throw new Error(result.error ?? "Unable to add song.");
+
+      setMusicTitle("");
+      setMusicArtist("");
+      setMusicUrl("");
+      setMusicMessage("Song added.");
+      await loadMusic();
+    } catch (error) {
+      setMusicMessage(error instanceof Error ? error.message : "Unable to add song.");
+    } finally {
+      setMusicStatus("idle");
+    }
+  }
+
+  async function deleteMusicTrack(id: string) {
+    if (!session) return;
+
+    setMusicStatus("saving");
+    setMusicMessage(null);
+
+    try {
+      const response = await fetch("/api/music/playlists", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+      const result = (await response.json()) as MusicPayload;
+      if (!response.ok) throw new Error(result.error ?? "Unable to delete song.");
+
+      setMusicMessage("Song deleted.");
+      await loadMusic();
+    } catch (error) {
+      setMusicMessage(error instanceof Error ? error.message : "Unable to delete song.");
+    } finally {
+      setMusicStatus("idle");
     }
   }
 
@@ -132,6 +265,71 @@ export default function GardenSutraPage() {
               )}
             </div>
           )}
+        </section>
+
+        <section className="tool-panel music-manager">
+          <div className="weather-hero">
+            <div>
+              <p className="kicker">Location Music</p>
+              <h2>Playlists</h2>
+            </div>
+            <strong>{musicByBiome[musicBiomeId]?.length ?? 0}</strong>
+          </div>
+
+          <label className="field-label" htmlFor="music-biome">
+            Location
+          </label>
+          <select
+            id="music-biome"
+            className="field-select"
+            value={musicBiomeId}
+            onChange={(event) => setMusicBiomeId(event.target.value)}
+          >
+            {BIOMES.map((biome) => (
+              <option key={biome.id} value={biome.id}>
+                {biome.name}
+              </option>
+            ))}
+          </select>
+
+          <form className="auth-form music-form" onSubmit={addMusicTrack}>
+            <label>
+              <span>Song Title</span>
+              <input value={musicTitle} onChange={(event) => setMusicTitle(event.target.value)} required />
+            </label>
+            <label>
+              <span>Artist</span>
+              <input value={musicArtist} onChange={(event) => setMusicArtist(event.target.value)} />
+            </label>
+            <label>
+              <span>YouTube URL</span>
+              <input value={musicUrl} onChange={(event) => setMusicUrl(event.target.value)} required />
+            </label>
+            <button className="command-button" type="submit" disabled={!session || musicStatus === "saving"}>
+              Add song
+            </button>
+          </form>
+
+          <div className="music-track-list">
+            {(musicByBiome[musicBiomeId] ?? []).map((track) => (
+              <div className="music-track-row" key={track.id}>
+                <div>
+                  <strong>{track.title}</strong>
+                  <span>{track.artist || "YouTube"} · {track.youtubeId}</span>
+                </div>
+                <button
+                  className="text-danger-button"
+                  type="button"
+                  disabled={!session || musicStatus === "saving"}
+                  onClick={() => deleteMusicTrack(track.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {musicMessage && <p className="form-error">{musicMessage}</p>}
         </section>
       </section>
     </AppShell>
