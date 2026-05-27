@@ -523,8 +523,8 @@ body {
 
 .hud-music-card {
   margin-top: 8px;
-  padding: 9px 10px 10px;
-  border-radius: 14px;
+  padding: 7px 8px;
+  border-radius: 999px;
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--hud-tint) 74%, transparent), color-mix(in oklch, var(--hud-tint) 58%, transparent)),
     color-mix(in oklch, var(--hud-text) 4%, transparent);
@@ -538,7 +538,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  min-height: 28px;
 }
 
 .hud-trackline small,
@@ -553,11 +554,21 @@ body {
 
 .hud-trackline b {
   display: block;
-  margin-top: 2px;
+  min-width: 0;
   font-family: var(--font-cormorant), serif;
   font-size: 15px;
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
 }
 
 .music-toggle {
@@ -577,6 +588,24 @@ body {
 .music-toggle:hover {
   transform: translateY(-1px);
   background: color-mix(in oklch, var(--hud-text) 10%, transparent);
+}
+
+.music-fold {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.music-details {
+  display: none;
+}
+
+.hud-music-card[data-expanded="true"] {
+  border-radius: 14px;
+}
+
+.hud-music-card[data-expanded="true"] .music-details {
+  display: block;
 }
 
 .lyric-rain {
@@ -624,20 +653,38 @@ body {
 }
 
 .youtube-loop-player {
-  width: 100%;
-  min-height: 200px;
-  margin-top: 9px;
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 200px;
+  height: 200px;
   border: 0;
-  border-radius: 10px;
   overflow: hidden;
-  background: color-mix(in oklch, var(--hud-text) 10%, transparent);
+  opacity: .01;
+  pointer-events: none;
 }
 
 .youtube-loop-player iframe {
   display: block;
-  width: 100%;
+  width: 200px;
   min-height: 200px;
   border: 0;
+}
+
+.hud-music-card[data-expanded="true"] .youtube-loop-player {
+  position: static;
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  margin-top: 9px;
+  border-radius: 10px;
+  opacity: 1;
+  pointer-events: auto;
+  background: color-mix(in oklch, var(--hud-text) 10%, transparent);
+}
+
+.hud-music-card[data-expanded="true"] .youtube-loop-player iframe {
+  width: 100%;
 }
 
 .youtube-link {

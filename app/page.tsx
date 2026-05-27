@@ -422,6 +422,7 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
   const pendingYoutubePlayRef = useRef(false);
   const [playing, setPlaying] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [audioNote, setAudioNote] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; entries: TimedLyric[] } | null>(null);
@@ -578,7 +579,7 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
   }
 
   return (
-    <div className="hud-music-card" data-playing={playing}>
+    <div className="hud-music-card" data-playing={playing} data-expanded={expanded}>
       {track.src && !track.youtubeId && (
         <audio
           ref={audioRef}
@@ -596,43 +597,56 @@ function LocationMusic({ track }: { track?: LocationTrack }) {
         />
       )}
       <div className="hud-trackline">
-        <div>
-          <small>Background music</small>
-          <b>{track.title} · {track.artist}</b>
-        </div>
-        <button
-          className="music-toggle"
-          type="button"
-          onClick={toggleMusic}
-          aria-label={playing ? "Mute background music" : "Play background music"}
-          title={playing ? "Mute" : "Play"}
-        >
-          {playing ? <Volume2 size={14} /> : <VolumeX size={14} />}
-        </button>
-      </div>
-      <div className="lyric-rain" aria-label={`${track.title} lyric rain`}>
-        <div className="synced-lyrics">
-          {lyricWindow.map(({ entry, index }) => (
-            <span
-              key={`${entry.time}-${entry.text}`}
-              className={index === activeIndex ? "is-current" : ""}
-            >
-              {entry.text}
-            </span>
-          ))}
+        <b>{track.title} · {track.artist}</b>
+        <div className="music-actions">
+          <button
+            className="music-toggle music-fold"
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            aria-label={expanded ? "Collapse music details" : "Expand music details"}
+            aria-expanded={expanded}
+            title={expanded ? "Collapse" : "Expand"}
+          >
+            {expanded ? "−" : "+"}
+          </button>
+          <button
+            className="music-toggle"
+            type="button"
+            onClick={toggleMusic}
+            aria-label={playing ? "Mute background music" : "Play background music"}
+            title={playing ? "Mute" : "Play"}
+          >
+            {playing ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          </button>
         </div>
       </div>
+
+      <div className="music-details" aria-hidden={!expanded}>
+        <div className="lyric-rain" aria-label={`${track.title} lyric rain`}>
+          <div className="synced-lyrics">
+            {lyricWindow.map(({ entry, index }) => (
+              <span
+                key={`${entry.time}-${entry.text}`}
+                className={index === activeIndex ? "is-current" : ""}
+              >
+                {entry.text}
+              </span>
+            ))}
+          </div>
+        </div>
+        {track.youtubeUrl && (
+          <a className="youtube-link" href={track.youtubeUrl} target="_blank" rel="noreferrer">
+            Open on YouTube
+          </a>
+        )}
+        {audioNote && <span className="music-note">{audioNote}</span>}
+      </div>
+
       {track.youtubeId && (
         <div className="youtube-loop-player" aria-label={`${track.title} YouTube player`}>
           <div ref={youtubeMountRef} />
         </div>
       )}
-      {track.youtubeUrl && (
-        <a className="youtube-link" href={track.youtubeUrl} target="_blank" rel="noreferrer">
-          Open on YouTube
-        </a>
-      )}
-      {audioNote && <span className="music-note">{audioNote}</span>}
     </div>
   );
 }
