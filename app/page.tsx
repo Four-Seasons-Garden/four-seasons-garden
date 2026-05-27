@@ -4,6 +4,7 @@
    per biome via CSS variables, plus per-biome weather particle effects. */
 
 import Link from "next/link";
+import { Solar } from "lunar-typescript";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
@@ -79,6 +80,67 @@ function formatZonedClock(date: Date, timezone: string) {
     minute: "2-digit",
     second: "2-digit",
   }).format(date);
+}
+
+function zonedParts(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    calendar: "gregory",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return {
+    year: Number(read("year")),
+    month: Number(read("month")),
+    day: Number(read("day")),
+    weekday: read("weekday"),
+    hour: Number(read("hour")),
+    minute: Number(read("minute")),
+    second: Number(read("second")),
+  };
+}
+
+function formatMonthName(month: number) {
+  const date = new Date(Date.UTC(2020, month - 1, 1));
+  return new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(date);
+}
+
+function buildAlmanac(date: Date | null, timezone: string) {
+  if (!date) return null;
+
+  const parts = zonedParts(date, timezone);
+  const lunar = Solar
+    .fromYmdHms(parts.year, parts.month, parts.day, parts.hour, parts.minute, parts.second)
+    .getLunar();
+  const pillars = [
+    `${lunar.getYearInGanZhiExact()}年`,
+    `${lunar.getMonthInGanZhiExact()}月`,
+    `${lunar.getDayInGanZhiExact()}日`,
+    `${lunar.getTimeInGanZhi()}时`,
+  ];
+
+  return {
+    gregorian: {
+      year: `${parts.year}`,
+      month: formatMonthName(parts.month),
+      day: `${parts.day}`,
+      weekday: parts.weekday,
+    },
+    lunarDate: `${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`,
+    zodiac: lunar.getYearShengXiaoExact(),
+    pillars,
+    timePillar: `${lunar.getTimeInGanZhi()}时`,
+    jieQi: lunar.getJieQi() || "—",
+  };
 }
 
 function zonedMinutes(date: Date, timezone: string) {
@@ -191,86 +253,27 @@ function liveTimeOfDay(weather?: LiveBiomeWeather, now?: Date | null): TimeOfDay
   );
 }
 
-/* ─────────── Biome dropdown ─────────── */
-
-function BiomeHud({
-  activeId, onChange,
-}: { activeId: string; onChange: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const active = getBiome(activeId);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="hud-biomes" ref={ref}>
-      <button className="biome-trigger" aria-haspopup="listbox" aria-expanded={open}
-              onClick={() => setOpen((o) => !o)} title={active.blurb}>
-        <span className="glyph">{active.glyph}</span>
-        <span className="label">
-          <span className="name">{active.shortName}</span>
-          <span className="feature">{active.theme.label}</span>
-        </span>
-        <svg className={`chev ${open ? "open" : ""}`} width="10" height="6" viewBox="0 0 10 6" fill="none">
-          <path d="M1 1 L5 5 L9 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="biome-menu" role="listbox" aria-label="Choose biome">
-          {BIOMES.map((b) => {
-            const isActive = b.id === activeId;
-            return (
-              <button key={b.id} className="biome-option" role="option"
-                      aria-selected={isActive}
-                      onClick={() => { onChange(b.id); setOpen(false); }}
-                      title={b.blurb}>
-                <span className="glyph">{b.glyph}</span>
-                <span className="label">
-                  <span className="name">{b.shortName}</span>
-                  <span className="feature">{b.theme.label}</span>
-                </span>
-                {isActive && (
-                  <svg className="tick" width="12" height="9" viewBox="0 0 12 9" fill="none">
-                    <path d="M1 4.5 L4.5 8 L11 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ─────────── HUD chips ─────────── */
 
 function HudWeather({
   biome,
   weather,
+  weatherByBiome,
   status,
   now,
   timeOfDay,
+  onChange,
 }: {
   biome: Biome;
   weather?: LiveBiomeWeather;
+  weatherByBiome: Record<string, LiveBiomeWeather>;
   status: "loading" | "ready" | "error";
   now: Date | null;
   timeOfDay: TimeOfDay;
+  onChange: (id: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const signal = weatherSignal(weather);
   const Icon =
     signal.snow || biome.effects.snow ? IconSnowflake :
@@ -280,6 +283,7 @@ function HudWeather({
     IconSun;
   const timezone = weather?.resolvedLocation.timezone ?? biome.timezone;
   const localClock = now ? formatZonedClock(now, timezone) : "--:--:--";
+  const almanac = buildAlmanac(now, timezone);
   const label =
     weather ? `${biome.shortName} · ${localClock}` :
     status === "error" ? "Live · unavailable" :
@@ -291,14 +295,105 @@ function HudWeather({
     ? `${titleCase(timeOfDay)} · ${weather.current.moon.phase} · Wind ${Math.round(weather.current.windSpeedMph)} mph`
     : "Open-Meteo";
 
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <div className="hud-weather">
-      <div className="ico"><Icon size={18} /></div>
-      <div className="meta">
-        <span className="label">{label}</span>
-        <span className="val">{value}</span>
-        <span className="detail">{detail}</span>
+    <div className="hud-weather-panel" ref={ref}>
+      <button
+        className="hud-weather"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        title={biome.blurb}
+        type="button"
+      >
+        <span className="ico"><Icon size={18} /></span>
+        <span className="meta">
+          <span className="label">{label}</span>
+          <span className="val">{value}</span>
+          <span className="detail">{detail}</span>
+        </span>
+        <span className="hud-date-parts" aria-label="Gregorian date">
+          <span><b>{almanac?.gregorian.year ?? "----"}</b><small>Year</small></span>
+          <span><b>{almanac?.gregorian.month ?? "---"}</b><small>Month</small></span>
+          <span><b>{almanac?.gregorian.day ?? "--"}</b><small>Day</small></span>
+          <span><b>{almanac?.gregorian.weekday ?? "---"}</b><small>Weekday</small></span>
+        </span>
+        <svg className={`chev ${open ? "open" : ""}`} width="12" height="8" viewBox="0 0 12 8" fill="none" aria-hidden="true">
+          <path d="M1 1.5 L6 6.5 L11 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <div className="hud-almanac" aria-label="Chinese lunar almanac">
+        <span>
+          <small>农历</small>
+          <b>{almanac ? `${almanac.lunarDate} · ${almanac.zodiac}` : "同步中"}</b>
+        </span>
+        <span>
+          <small>八字</small>
+          <b>{almanac?.pillars.join(" ") ?? "---- -- -- --"}</b>
+        </span>
+        <span>
+          <small>时柱</small>
+          <b>{almanac?.timePillar ?? "--"}</b>
+        </span>
+        <span>
+          <small>节气</small>
+          <b>{almanac?.jieQi ?? "—"}</b>
+        </span>
       </div>
+
+      {open && (
+        <div className="biome-menu hud-weather-menu" role="listbox" aria-label="Choose location">
+          {BIOMES.map((candidate) => {
+            const isActive = candidate.id === biome.id;
+            const candidateWeather = weatherByBiome[candidate.id];
+            const optionLabel = candidateWeather
+              ? `${fmtTemperature(candidateWeather.current.temperatureF)} · ${candidateWeather.current.weatherLabel}`
+              : candidate.theme.label;
+
+            return (
+              <button
+                key={candidate.id}
+                className="biome-option"
+                role="option"
+                aria-selected={isActive}
+                onClick={() => {
+                  onChange(candidate.id);
+                  setOpen(false);
+                }}
+                title={candidate.blurb}
+                type="button"
+              >
+                <span className="glyph">{candidate.glyph}</span>
+                <span className="label">
+                  <span className="name">{candidate.shortName}</span>
+                  <span className="feature">{optionLabel}</span>
+                </span>
+                {isActive && (
+                  <svg className="tick" width="12" height="9" viewBox="0 0 12 9" fill="none" aria-hidden="true">
+                    <path d="M1 4.5 L4.5 8 L11 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -473,11 +568,12 @@ export default function Page() {
           <HudWeather
             biome={biome}
             weather={weather}
+            weatherByBiome={weatherByBiome}
             status={weatherStatus}
             now={now}
             timeOfDay={timeOfDay}
+            onChange={setBiomeId}
           />
-          <BiomeHud activeId={biome.id} onChange={setBiomeId} />
         </div>
       </div>
     </div>
