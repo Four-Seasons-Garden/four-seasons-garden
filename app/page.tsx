@@ -4,7 +4,7 @@
    per biome via CSS variables, plus per-biome weather particle effects. */
 
 import Link from "next/link";
-import { Volume2, VolumeX } from "lucide-react";
+import { Move, Volume2, VolumeX } from "lucide-react";
 import { Solar } from "lunar-typescript";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -181,7 +181,7 @@ const FALLBACK_LOCATION_TRACKS: Partial<Record<string, LocationTrack[]>> = {
   }],
 };
 
-const DRAG_STORAGE_PREFIX = "four-seasons:front-page-drag:v1";
+const DRAG_STORAGE_PREFIX = "four-seasons:front-page-drag:v2";
 const DRAG_THRESHOLD = 4;
 
 function clamp(value: number, min: number, max: number) {
@@ -189,11 +189,17 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function dragStorageKey(key: string) {
+  if (typeof window === "undefined") return `${DRAG_STORAGE_PREFIX}:desktop:${key}`;
+  const scope = window.matchMedia("(max-width: 860px)").matches ? "mobile" : "desktop";
+  return `${DRAG_STORAGE_PREFIX}:${scope}:${key}`;
+}
+
 function readStoredDragPosition(key: string): DragPosition {
   if (typeof window === "undefined") return { x: 0, y: 0 };
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(`${DRAG_STORAGE_PREFIX}:${key}`) ?? "");
+    const parsed = JSON.parse(window.localStorage.getItem(dragStorageKey(key)) ?? "");
     if (
       typeof parsed?.x === "number" &&
       Number.isFinite(parsed.x) &&
@@ -212,7 +218,7 @@ function readStoredDragPosition(key: string): DragPosition {
 function writeStoredDragPosition(key: string, position: DragPosition) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(`${DRAG_STORAGE_PREFIX}:${key}`, JSON.stringify(position));
+    window.localStorage.setItem(dragStorageKey(key), JSON.stringify(position));
   } catch {
     // Dragging should still work even if the browser blocks localStorage.
   }
@@ -223,7 +229,7 @@ function useSceneDraggable(key: string) {
   const [dragging, setDragging] = useState(false);
   const positionRef = useRef(position);
   const dragRef = useRef<DragState | null>(null);
-  const suppressClickRef = useRef(false);
+  const dragElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -240,10 +246,16 @@ function useSceneDraggable(key: string) {
     setPosition(next);
   }
 
-  function onPointerDown(event: ReactPointerEvent<HTMLElement>) {
+  function setDragElement(element: HTMLElement | null) {
+    dragElementRef.current = element;
+  }
+
+  function onHandlePointerDown(event: ReactPointerEvent<HTMLElement>) {
     if (event.button !== 0) return;
 
-    const element = event.currentTarget;
+    const element = dragElementRef.current;
+    if (!element) return;
+
     const parent = element.offsetParent instanceof HTMLElement
       ? element.offsetParent
       : element.parentElement;
@@ -274,10 +286,10 @@ function useSceneDraggable(key: string) {
       moved: false,
     };
 
-    element.setPointerCapture(event.pointerId);
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  function onPointerMove(event: ReactPointerEvent<HTMLElement>) {
+  function onHandlePointerMove(event: ReactPointerEvent<HTMLElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -286,7 +298,6 @@ function useSceneDraggable(key: string) {
     if (!drag.moved && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
 
     drag.moved = true;
-    suppressClickRef.current = true;
     setDragging(true);
     event.preventDefault();
 
@@ -308,26 +319,27 @@ function useSceneDraggable(key: string) {
     }
   }
 
-  function onClickCapture(event: ReactMouseEvent<HTMLElement>) {
-    if (!suppressClickRef.current) return;
-
-    suppressClickRef.current = false;
+  function onHandleClick(event: ReactMouseEvent<HTMLElement>) {
     event.preventDefault();
     event.stopPropagation();
   }
 
   return {
     className: "draggable-scene-item",
-    "data-dragging": dragging ? "true" : undefined,
+    dataDragging: dragging ? "true" : undefined,
+    setDragElement,
     style: {
       "--drag-x": `${position.x}px`,
       "--drag-y": `${position.y}px`,
     } as CSSProperties,
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: endDrag,
-    onPointerCancel: endDrag,
-    onClickCapture,
+    handleProps: {
+      "data-dragging": dragging ? "true" : undefined,
+      onPointerDown: onHandlePointerDown,
+      onPointerMove: onHandlePointerMove,
+      onPointerUp: endDrag,
+      onPointerCancel: endDrag,
+      onClick: onHandleClick,
+    },
   };
 }
 
@@ -915,7 +927,13 @@ function HudWeather({
   timeOfDay: TimeOfDay;
   onChange: (id: string) => void;
 }) {
-  const { className: dragClassName, ...dragProps } = useSceneDraggable("weather-panel");
+  const {
+    className: dragClassName,
+    dataDragging,
+    setDragElement,
+    style: dragStyle,
+    handleProps,
+  } = useSceneDraggable("weather-panel");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const signal = weatherSignal(weather);
@@ -955,8 +973,27 @@ function HudWeather({
     };
   }, [open]);
 
+  function setPanelRef(element: HTMLDivElement | null) {
+    ref.current = element;
+    setDragElement(element);
+  }
+
   return (
-    <div className={`hud-weather-panel ${dragClassName}`} ref={ref} {...dragProps}>
+    <div
+      className={`hud-weather-panel ${dragClassName}`}
+      data-dragging={dataDragging}
+      ref={setPanelRef}
+      style={dragStyle}
+    >
+      <button
+        className="drag-handle panel-drag-handle"
+        type="button"
+        aria-label="Move weather panel"
+        title="Move panel"
+        {...handleProps}
+      >
+        <Move size={14} />
+      </button>
       <button
         className="hud-weather"
         aria-haspopup="listbox"
@@ -1038,10 +1075,30 @@ function HudWeather({
 }
 
 function HudMark({ biome }: { biome: Biome }) {
-  const { className: dragClassName, ...dragProps } = useSceneDraggable("garden-mark");
+  const {
+    className: dragClassName,
+    dataDragging,
+    setDragElement,
+    style: dragStyle,
+    handleProps,
+  } = useSceneDraggable("garden-mark");
 
   return (
-    <div className={`hud-mark ${dragClassName}`} {...dragProps}>
+    <div
+      className={`hud-mark ${dragClassName}`}
+      data-dragging={dataDragging}
+      ref={setDragElement}
+      style={dragStyle}
+    >
+      <button
+        className="drag-handle mark-drag-handle"
+        type="button"
+        aria-label="Move title panel"
+        title="Move panel"
+        {...handleProps}
+      >
+        <Move size={13} />
+      </button>
       <span className="wm">Four Seasons <em>Garden</em></span>
       <span className="rule" />
       <span className="tag">
@@ -1079,17 +1136,35 @@ function BiomeEffects({
 }
 
 function GardenHotspot({ place }: { place: GardenPlace }) {
-  const { className: dragClassName, ...dragProps } = useSceneDraggable(`place-link:${place.href}`);
+  const {
+    className: dragClassName,
+    dataDragging,
+    setDragElement,
+    style: dragStyle,
+    handleProps,
+  } = useSceneDraggable(`place-link:${place.href}`);
 
   return (
-    <Link
-      href={place.href}
+    <div
       className={`garden-hotspot ${place.className} ${dragClassName}`}
-      {...dragProps}
+      data-dragging={dataDragging}
+      ref={setDragElement}
+      style={dragStyle}
     >
-      <span className="pulse" />
-      <span className="hotspot-label">{place.label}</span>
-    </Link>
+      <Link href={place.href} className="garden-hotspot-link">
+        <span className="pulse" />
+        <span className="hotspot-label">{place.label}</span>
+      </Link>
+      <button
+        className="drag-handle hotspot-drag-handle"
+        type="button"
+        aria-label={`Move ${place.label} link`}
+        title="Move link"
+        {...handleProps}
+      >
+        <Move size={12} />
+      </button>
+    </div>
   );
 }
 
