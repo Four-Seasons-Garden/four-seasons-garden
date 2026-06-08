@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/supabase-keepalive",
       "schedule": "17 13 * * *"
+    },
+    {
+      "path": "/api/cron/weather-sync",
+      "schedule": "0 * * * *"
     }
   ]
 }
