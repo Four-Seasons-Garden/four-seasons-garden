@@ -163,22 +163,32 @@ declare global {
 let youtubeApiPromise: Promise<void> | null = null;
 
 const FALLBACK_LOCATION_TRACKS: Partial<Record<string, LocationTrack[]>> = {
-  akureyri: [{
-    id: "akureyri-bing-yu",
-    biomeId: "akureyri",
-    title: "冰雨",
-    artist: "刘德华",
-    src: "/audio/akureyri-bing-yu.mp3",
-    youtubeId: "90zAJ4tFSy8",
-    youtubeUrl: "https://youtu.be/90zAJ4tFSy8",
-    lyricsUrl: "/audio/akureyri-bing-yu.lrc",
-    lines: [
-      "冰色的雨落进北方花园",
-      "极光把夜色轻轻照亮",
-      "玻璃温室听见雪的回声",
-      "一行一行，像雨慢慢往下",
-    ],
-  }],
+  akureyri: [
+    {
+      id: "akureyri-bing-yu",
+      biomeId: "akureyri",
+      title: "冰雨",
+      artist: "刘德华",
+      src: "/audio/akureyri-bing-yu.mp3",
+      youtubeId: "90zAJ4tFSy8",
+      youtubeUrl: "https://youtu.be/90zAJ4tFSy8",
+      lyricsUrl: "/audio/akureyri-bing-yu.lrc",
+      lines: [
+        "冰色的雨落进北方花园",
+        "极光把夜色轻轻照亮",
+        "玻璃温室听见雪的回声",
+        "一行一行，像雨慢慢往下",
+      ],
+    },
+    {
+      id: "akureyri-yi-nian",
+      biomeId: "akureyri",
+      title: "一念 完整版",
+      artist: "张紫宁 / 李鑫一",
+      youtubeId: "IsZHPjmVM3E",
+      youtubeUrl: "https://youtu.be/IsZHPjmVM3E",
+    },
+  ],
 };
 
 const DRAG_STORAGE_PREFIX = "four-seasons:front-page-drag:v2";
