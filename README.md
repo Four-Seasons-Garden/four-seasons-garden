@@ -1,5 +1,16 @@
 # Handoff → `Four-Seasons-Garden/four-seasons-garden`
 
+## Supabase keep-alive
+
+This app includes a Vercel Cron keep-alive at `/api/cron/supabase-keepalive`.
+It runs daily from `vercel.json` and performs one small read against
+`biome_hourly_weather` so the Supabase project receives regular database
+activity.
+
+For production, add a `CRON_SECRET` environment variable in Vercel. Vercel sends
+that value as `Authorization: Bearer <CRON_SECRET>` when it invokes the cron job,
+and the route will require it whenever the variable is configured.
+
 These files port the watercolor cottage design from this prototype into your Next.js repo. Drop each file into the matching path in the repo.
 
 ## File-by-file mapping
