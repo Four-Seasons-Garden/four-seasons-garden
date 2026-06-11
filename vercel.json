@@ -7,7 +7,7 @@
     },
     {
       "path": "/api/cron/weather-sync",
-      "schedule": "0 * * * *"
+      "schedule": "7 14 * * *"
     }
   ]
 }

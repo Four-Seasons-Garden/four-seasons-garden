@@ -1,4 +1,4 @@
-import { BIOMES, DEFAULT_BIOME_ID } from "@/lib/constants/biomes";
+import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/constants/biomes";
 import { createSupabaseReadClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -34,15 +34,31 @@ function parseRange(value: string | null): RangeKey {
   return "day";
 }
 
-function parseBiome(value: string | null) {
-  return BIOMES.some((biome) => biome.id === value) ? value : DEFAULT_BIOME_ID;
+function parseBiome(value: string | null): string {
+  return value && BIOMES.some((biome) => biome.id === value) ? value : DEFAULT_BIOME_ID;
+}
+
+function currentLocalHour(timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:00:00`;
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const range = parseRange(url.searchParams.get("range"));
   const biomeId = parseBiome(url.searchParams.get("biome"));
+  const biome = getBiome(biomeId);
   const limit = RANGE_LIMITS[range];
+  const throughHour = currentLocalHour(biome.timezone);
 
   try {
     const supabase = createSupabaseReadClient();
@@ -53,6 +69,7 @@ export async function GET(request: Request) {
       )
       .eq("provider", "Open-Meteo")
       .eq("biome_id", biomeId)
+      .lte("forecast_time_local", throughHour)
       .order("forecast_time_local", { ascending: false })
       .limit(limit);
 
@@ -66,6 +83,7 @@ export async function GET(request: Request) {
       range,
       requestedHours: limit,
       availableHours: rows.length,
+      throughHour,
       firstHour: rows[0]?.forecast_time_local ?? null,
       lastHour: rows.at(-1)?.forecast_time_local ?? null,
       rows: rows.map((row) => ({
