@@ -10,6 +10,8 @@ const RANGE_LIMITS = {
   year: 24 * 366,
 } as const;
 
+const HOUR_MS = 60 * 60 * 1000;
+
 type RangeKey = keyof typeof RANGE_LIMITS;
 
 type HourlyWeatherRow = {
@@ -52,6 +54,24 @@ function currentLocalHour(timezone: string) {
   return `${values.year}-${values.month}-${values.day}T${values.hour}:00:00`;
 }
 
+function parseLocalTimestamp(value: string) {
+  const [date = "", time = ""] = value.split("T");
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour = 0, minute = 0, second = 0] = time.split(":").map(Number);
+  return Date.UTC(year, month - 1, day, hour, minute, second);
+}
+
+function formatLocalTimestamp(timestamp: number) {
+  const date = new Date(timestamp);
+  const pad = (value: number) => value.toString().padStart(2, "0");
+
+  return [
+    date.getUTCFullYear(),
+    pad(date.getUTCMonth() + 1),
+    pad(date.getUTCDate()),
+  ].join("-") + `T${pad(date.getUTCHours())}:00:00`;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const range = parseRange(url.searchParams.get("range"));
@@ -59,6 +79,7 @@ export async function GET(request: Request) {
   const biome = getBiome(biomeId);
   const limit = RANGE_LIMITS[range];
   const throughHour = currentLocalHour(biome.timezone);
+  const fromHour = formatLocalTimestamp(parseLocalTimestamp(throughHour) - (limit - 1) * HOUR_MS);
 
   try {
     const supabase = createSupabaseReadClient();
@@ -69,13 +90,14 @@ export async function GET(request: Request) {
       )
       .eq("provider", "Open-Meteo")
       .eq("biome_id", biomeId)
+      .gte("forecast_time_local", fromHour)
       .lte("forecast_time_local", throughHour)
-      .order("forecast_time_local", { ascending: false })
+      .order("forecast_time_local", { ascending: true })
       .limit(limit);
 
     if (error) throw new Error(error.message);
 
-    const rows = ((data ?? []) as HourlyWeatherRow[]).reverse();
+    const rows = (data ?? []) as HourlyWeatherRow[];
 
     return Response.json({
       provider: "Open-Meteo",
@@ -83,6 +105,7 @@ export async function GET(request: Request) {
       range,
       requestedHours: limit,
       availableHours: rows.length,
+      fromHour,
       throughHour,
       firstHour: rows[0]?.forecast_time_local ?? null,
       lastHour: rows.at(-1)?.forecast_time_local ?? null,

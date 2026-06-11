@@ -129,13 +129,14 @@ function formatStatDate(value: string) {
 }
 
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type AxisTick = {
   time: number;
   primary: string;
-  secondary: string;
+  secondary?: string;
 };
 
 function parseLocalTimestamp(value: string) {
@@ -159,7 +160,7 @@ function localParts(timestamp: number) {
 function formatAxisHour(hour: number) {
   const period = hour >= 12 ? "PM" : "AM";
   const hour12 = hour % 12 || 12;
-  return `${hour12}${period}`;
+  return `${hour12} ${period}`;
 }
 
 function formatMonthDay(timestamp: number) {
@@ -173,21 +174,19 @@ function formatAxisLabel(timestamp: number, range: RangeId): Omit<AxisTick, "tim
   if (range === "day") {
     return {
       primary: formatAxisHour(parts.hour),
-      secondary: formatMonthDay(timestamp),
     };
   }
 
   if (range === "week") {
     return {
-      primary: `${WEEKDAY_LABELS[parts.weekday]} ${formatMonthDay(timestamp)}`,
-      secondary: formatAxisHour(parts.hour),
+      primary: WEEKDAY_LABELS[parts.weekday],
+      secondary: formatMonthDay(timestamp),
     };
   }
 
   if (range === "month") {
     return {
       primary: formatMonthDay(timestamp),
-      secondary: formatAxisHour(parts.hour),
     };
   }
 
@@ -197,26 +196,65 @@ function formatAxisLabel(timestamp: number, range: RangeId): Omit<AxisTick, "tim
   };
 }
 
+function startOfLocalDay(timestamp: number) {
+  const parts = localParts(timestamp);
+  return Date.UTC(parts.year, parts.month, parts.day, 0, 0, 0);
+}
+
 function addUniqueTick(ticks: number[], value: number, start: number, end: number) {
   if (value < start || value > end) return;
   if (!ticks.some((tick) => Math.abs(tick - value) < HOUR_MS)) ticks.push(value);
 }
 
-function buildRegularTicks(start: number, end: number, stepHours: number) {
+function buildRegularTicks(
+  start: number,
+  end: number,
+  stepHours: number,
+  options: { includeEdges?: boolean } = {},
+) {
   const ticks: number[] = [];
   const step = stepHours * HOUR_MS;
   const first = Math.ceil(start / step) * step;
 
-  addUniqueTick(ticks, start, start, end);
+  if (options.includeEdges) addUniqueTick(ticks, start, start, end);
   for (let time = first; time <= end; time += step) {
     addUniqueTick(ticks, time, start, end);
   }
-  addUniqueTick(ticks, end, start, end);
+  if (options.includeEdges) addUniqueTick(ticks, end, start, end);
 
   return ticks.sort((a, b) => a - b);
 }
 
-function buildMonthTicks(start: number, end: number) {
+function buildDayTicks(start: number, end: number) {
+  const firstTick = Math.ceil(start / (6 * HOUR_MS)) * (6 * HOUR_MS);
+  const ticks = buildRegularTicks(firstTick, end, 6);
+
+  return ticks.length >= 2
+    ? ticks
+    : buildRegularTicks(start, end, 6, { includeEdges: true });
+}
+
+function buildDailyTicks(start: number, end: number) {
+  const first = startOfLocalDay(start) + DAY_MS;
+  const ticks = buildRegularTicks(first, end, 24);
+
+  return ticks.length >= 2
+    ? ticks
+    : buildRegularTicks(start, end, 24, { includeEdges: true });
+}
+
+function buildWeeklyTicks(start: number, end: number) {
+  const startParts = localParts(start);
+  const daysUntilMonday = (8 - startParts.weekday) % 7 || 7;
+  const first = startOfLocalDay(start) + daysUntilMonday * DAY_MS;
+  const ticks = buildRegularTicks(first, end, 24 * 7);
+
+  return ticks.length >= 2
+    ? ticks
+    : buildRegularTicks(start, end, 24 * 7, { includeEdges: true });
+}
+
+function buildMonthBoundaryTicks(start: number, end: number) {
   const ticks: number[] = [];
   const startParts = localParts(start);
   let time = Date.UTC(startParts.year, startParts.month, 1, 0, 0, 0);
@@ -225,13 +263,11 @@ function buildMonthTicks(start: number, end: number) {
     time = Date.UTC(startParts.year, startParts.month + 1, 1, 0, 0, 0);
   }
 
-  addUniqueTick(ticks, start, start, end);
   while (time <= end) {
     addUniqueTick(ticks, time, start, end);
     const parts = localParts(time);
     time = Date.UTC(parts.year, parts.month + 1, 1, 0, 0, 0);
   }
-  addUniqueTick(ticks, end, start, end);
 
   return ticks.sort((a, b) => a - b);
 }
@@ -242,24 +278,27 @@ function buildXAxisTicks(rows: HourlyPoint[], range: RangeId): AxisTick[] {
   const start = parseLocalTimestamp(rows[0].time);
   const end = parseLocalTimestamp(rows.at(-1)?.time ?? rows[0].time);
   const durationHours = Math.max(1, (end - start) / HOUR_MS);
+  let ticks: number[];
+  let labelRange = range;
 
-  if (range === "year" && durationHours > 24 * 62) {
-    return buildMonthTicks(start, end).map((time) => ({
-      time,
-      ...formatAxisLabel(time, range),
-    }));
+  if (range === "year") {
+    if (durationHours > 24 * 62) {
+      ticks = buildMonthBoundaryTicks(start, end);
+    } else {
+      ticks = buildWeeklyTicks(start, end);
+      labelRange = "month";
+    }
+  } else if (range === "month") {
+    ticks = buildWeeklyTicks(start, end);
+  } else if (range === "week") {
+    ticks = buildDailyTicks(start, end);
+  } else {
+    ticks = buildDayTicks(start, end);
   }
 
-  const stepHours = {
-    day: 3,
-    week: 24,
-    month: 72,
-    year: 168,
-  }[range];
-
-  return buildRegularTicks(start, end, stepHours).map((time) => ({
+  return ticks.map((time) => ({
     time,
-    ...formatAxisLabel(time, range),
+    ...formatAxisLabel(time, labelRange),
   }));
 }
 
@@ -271,7 +310,7 @@ function buildMinorTicks(rows: HourlyPoint[], range: RangeId) {
   const durationHours = Math.max(1, (end - start) / HOUR_MS);
 
   if (range === "year" && durationHours > 24 * 62) {
-    return buildMonthTicks(start, end).map((tick) => tick);
+    return buildMonthBoundaryTicks(start, end).map((tick) => tick);
   }
 
   let stepHours = {
@@ -317,6 +356,19 @@ function buildPath(points: Array<{ x: number; y: number }>) {
   return points
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
+}
+
+function formatChartWindow(rows: HourlyPoint[]) {
+  if (rows.length === 0) return "";
+
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    timeZone: "UTC",
+  });
+
+  return `${formatter.format(new Date(parseLocalTimestamp(rows[0].time)))} - ${formatter.format(new Date(parseLocalTimestamp(rows.at(-1)?.time ?? rows[0].time)))}`;
 }
 
 type WeatherStat = {
@@ -523,136 +575,139 @@ function WeatherDiagram({
         )}
       </div>
 
-      <svg className="weather-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Hourly temperature and precipitation chart">
-        <defs>
-          <linearGradient id="tempLine" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#9d5c44" />
-            <stop offset="48%" stopColor="#c49447" />
-            <stop offset="100%" stopColor="#4f8a78" />
-          </linearGradient>
-          <linearGradient id="tempFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#d89859" stopOpacity=".32" />
-            <stop offset="100%" stopColor="#d89859" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+      <div className="weather-chart-frame">
+        <svg className="weather-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Hourly temperature and precipitation chart">
+          <defs>
+            <linearGradient id="tempLine" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stopColor="#9d5c44" />
+              <stop offset="48%" stopColor="#c49447" />
+              <stop offset="100%" stopColor="#4f8a78" />
+            </linearGradient>
+            <linearGradient id="tempFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#d89859" stopOpacity=".32" />
+              <stop offset="100%" stopColor="#d89859" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-        {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
-          const y = pad.top + tick * innerHeight;
-          const temp = maxTemp - tick * (maxTemp - minTemp);
-          return (
-            <g key={tick}>
-              <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} className="chart-grid" />
-              <text x={pad.left - 12} y={y + 4} className="chart-axis" textAnchor="end">
-                <tspan x={pad.left - 12}>{Math.round(temp)}°F</tspan>
-                <tspan x={pad.left - 12} dy="12">{formatCelsius(temp)}</tspan>
-              </text>
-            </g>
-          );
-        })}
-
-        {chart.map((point, index) => {
-          const barWidth = Math.max(2, innerWidth / chart.length * 0.48);
-          const barHeight = precipBaseline - yForPrecip(point.precipitationIn);
-          const x = xForTime(parseLocalTimestamp(point.time)) - barWidth / 2;
-          const y = precipBaseline - barHeight;
-          return (
-            <rect
-              key={`${point.time}-${index}`}
-              x={x}
-              y={y}
-              width={barWidth}
-              height={barHeight}
-              rx="2"
-              className="precip-bar"
-            />
-          );
-        })}
-
-        <g aria-hidden="true">
-          <line
-            x1={width - pad.right}
-            x2={width - pad.right}
-            y1={precipAxisTop}
-            y2={precipBaseline}
-            className="chart-axis-line"
-          />
-          {precipTicks.map((tick) => {
-            const value = tick * maxPrecip;
-            const y = yForPrecip(value);
+          {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
+            const y = pad.top + tick * innerHeight;
+            const temp = maxTemp - tick * (maxTemp - minTemp);
             return (
               <g key={tick}>
-                <line
-                  x1={width - pad.right}
-                  x2={width - pad.right + 7}
-                  y1={y}
-                  y2={y}
-                  className="chart-axis-line"
-                />
-                <text x={width - pad.right + 13} y={y + 4} className="chart-axis chart-axis-right">
-                  <tspan x={width - pad.right + 13}>{value.toFixed(value >= 0.1 ? 2 : 3)} in</tspan>
-                  <tspan x={width - pad.right + 13} dy="12">{formatMillimeters(value)}</tspan>
+                <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} className="chart-grid" />
+                <text x={pad.left - 12} y={y + 4} className="chart-axis" textAnchor="end">
+                  <tspan x={pad.left - 12}>{Math.round(temp)}°F</tspan>
+                  <tspan x={pad.left - 12} dy="12">{formatCelsius(temp)}</tspan>
                 </text>
               </g>
             );
           })}
-          <text x={width - pad.right + 13} y={precipAxisTop - 10} className="chart-axis chart-axis-right chart-axis-title">
-            precip
-          </text>
-        </g>
 
-        <line x1={pad.left} x2={width - pad.right} y1={precipBaseline} y2={precipBaseline} className="chart-axis-base" />
-        {minorTicks.map((tick) => {
-          const x = xForTime(tick);
-          return (
+          {chart.map((point, index) => {
+            const barWidth = Math.max(2, innerWidth / chart.length * 0.48);
+            const barHeight = precipBaseline - yForPrecip(point.precipitationIn);
+            const x = xForTime(parseLocalTimestamp(point.time)) - barWidth / 2;
+            const y = precipBaseline - barHeight;
+            return (
+              <rect
+                key={`${point.time}-${index}`}
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barHeight}
+                rx="2"
+                className="precip-bar"
+              />
+            );
+          })}
+
+          <g aria-hidden="true">
             <line
-              key={`minor-${tick}`}
-              x1={x}
-              x2={x}
-              y1={precipBaseline}
-              y2={precipBaseline + 5}
-              className="chart-x-minor"
+              x1={width - pad.right}
+              x2={width - pad.right}
+              y1={precipAxisTop}
+              y2={precipBaseline}
+              className="chart-axis-line"
             />
-          );
-        })}
-        {xAxisTicks.map((tick) => {
-          const x = xForTime(tick.time);
-          const anchor = x < pad.left + 30 ? "start" : x > width - pad.right - 30 ? "end" : "middle";
-          return (
-            <g key={`x-${tick.time}`}>
+            {precipTicks.map((tick) => {
+              const value = tick * maxPrecip;
+              const y = yForPrecip(value);
+              return (
+                <g key={tick}>
+                  <line
+                    x1={width - pad.right}
+                    x2={width - pad.right + 7}
+                    y1={y}
+                    y2={y}
+                    className="chart-axis-line"
+                  />
+                  <text x={width - pad.right + 13} y={y + 4} className="chart-axis chart-axis-right">
+                    <tspan x={width - pad.right + 13}>{value.toFixed(value >= 0.1 ? 2 : 3)} in</tspan>
+                    <tspan x={width - pad.right + 13} dy="12">{formatMillimeters(value)}</tspan>
+                  </text>
+                </g>
+              );
+            })}
+            <text x={width - pad.right + 13} y={precipAxisTop - 10} className="chart-axis chart-axis-right chart-axis-title">
+              precip
+            </text>
+          </g>
+
+          <line x1={pad.left} x2={width - pad.right} y1={precipBaseline} y2={precipBaseline} className="chart-axis-base" />
+          {minorTicks.map((tick) => {
+            const x = xForTime(tick);
+            return (
               <line
+                key={`minor-${tick}`}
                 x1={x}
                 x2={x}
                 y1={precipBaseline}
-                y2={precipBaseline + 9}
-                className="chart-x-major"
+                y2={precipBaseline + 5}
+                className="chart-x-minor"
               />
-              <text x={x} y={height - 34} className="chart-axis chart-x-label" textAnchor={anchor}>
-                <tspan x={x}>{tick.primary}</tspan>
-                <tspan x={x} dy="13">{tick.secondary}</tspan>
-              </text>
-            </g>
-          );
-        })}
+            );
+          })}
+          {xAxisTicks.map((tick) => {
+            const x = xForTime(tick.time);
+            const anchor = x < pad.left + 30 ? "start" : x > width - pad.right - 30 ? "end" : "middle";
+            return (
+              <g key={`x-${tick.time}`}>
+                <line
+                  x1={x}
+                  x2={x}
+                  y1={precipBaseline}
+                  y2={precipBaseline + 9}
+                  className="chart-x-major"
+                />
+                <text x={x} y={height - 34} className="chart-axis chart-x-label" textAnchor={anchor}>
+                  <tspan x={x}>{tick.primary}</tspan>
+                  {tick.secondary && <tspan x={x} dy="13">{tick.secondary}</tspan>}
+                </text>
+              </g>
+            );
+          })}
 
-        {firstLinePoint && lastLinePoint && (
-          <path
-            d={`${path} L ${lastLinePoint.x} ${precipBaseline} L ${firstLinePoint.x} ${precipBaseline} Z`}
-            fill="url(#tempFill)"
-          />
-        )}
-        <path d={path} fill="none" stroke="url(#tempLine)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          {firstLinePoint && lastLinePoint && (
+            <path
+              d={`${path} L ${lastLinePoint.x} ${precipBaseline} L ${firstLinePoint.x} ${precipBaseline} Z`}
+              fill="url(#tempFill)"
+            />
+          )}
+          <path d={path} fill="none" stroke="url(#tempLine)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
 
-        {linePoints.map((point, index) => (
-          index % Math.ceil(linePoints.length / 12) === 0 || index === linePoints.length - 1 ? (
-            <circle key={index} cx={point.x} cy={point.y} r="4" className="chart-dot" />
-          ) : null
-        ))}
+          {linePoints.map((point, index) => (
+            index % Math.ceil(linePoints.length / 12) === 0 || index === linePoints.length - 1 ? (
+              <circle key={index} cx={point.x} cy={point.y} r="4" className="chart-dot" />
+            ) : null
+          ))}
 
-      </svg>
+        </svg>
+      </div>
 
       <div className="diagram-legend">
         <span><i className="legend-temp" /> Temperature</span>
         <span><i className="legend-rain" /> Precipitation</span>
+        <span>{formatChartWindow(rows)}</span>
         <span>{rows.length} hourly rows · {chart.length} drawn points</span>
       </div>
     </div>

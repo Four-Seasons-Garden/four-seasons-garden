@@ -1294,8 +1294,14 @@ body {
   white-space: nowrap;
 }
 
+.weather-chart-frame {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
 .weather-chart {
   width: 100%;
+  min-width: 720px;
   height: auto;
   display: block;
 }
@@ -1309,7 +1315,7 @@ body {
   fill: rgba(49, 37, 24, .54);
   font-family: var(--font-geist-mono), monospace;
   font-size: 11px;
-  letter-spacing: .08em;
+  letter-spacing: 0;
 }
 
 .chart-axis-right {
@@ -1343,6 +1349,7 @@ body {
 
 .chart-x-label {
   fill: rgba(49, 37, 24, .68);
+  font-size: 10px;
 }
 
 .precip-bar {
@@ -1362,7 +1369,7 @@ body {
   align-items: center;
   font-family: var(--font-geist-mono), monospace;
   font-size: 10px;
-  letter-spacing: .12em;
+  letter-spacing: 0;
   text-transform: uppercase;
   opacity: .66;
 }
