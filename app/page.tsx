@@ -189,6 +189,24 @@ const FALLBACK_LOCATION_TRACKS: Partial<Record<string, LocationTrack[]>> = {
       youtubeUrl: "https://youtu.be/IsZHPjmVM3E",
     },
   ],
+  hualien: [
+    {
+      id: "hualien-deng-ai-jiang-luo",
+      biomeId: "hualien",
+      title: "等愛降落",
+      artist: "李玟 CoCo Lee",
+      youtubeId: "f2wiVabzsN8",
+      youtubeUrl: "https://youtu.be/f2wiVabzsN8",
+    },
+    {
+      id: "hualien-wang-ri-qing",
+      biomeId: "hualien",
+      title: "往日情",
+      artist: "李玟 CoCo Lee",
+      youtubeId: "qna0SwJtoU4",
+      youtubeUrl: "https://youtu.be/qna0SwJtoU4",
+    },
+  ],
 };
 
 const DRAG_STORAGE_PREFIX = "four-seasons:front-page-drag:v2";
