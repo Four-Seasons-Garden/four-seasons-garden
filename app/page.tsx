@@ -4,9 +4,9 @@
    per biome via CSS variables, plus per-biome weather particle effects. */
 
 import Link from "next/link";
-import { Move, Volume2, VolumeX } from "lucide-react";
+import { Move, Repeat, Repeat1, Volume2, VolumeX } from "lucide-react";
 import { Solar } from "lunar-typescript";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CSSProperties,
   MouseEvent as ReactMouseEvent,
@@ -90,6 +90,8 @@ type DragPosition = {
   x: number;
   y: number;
 };
+
+type LoopMode = "playlist" | "track";
 
 type DragState = {
   pointerId: number;
@@ -582,19 +584,49 @@ function visibleLyrics(entries: TimedLyric[], activeIndex: number) {
   }));
 }
 
+function locationTrackKey(track: LocationTrack) {
+  return track.id ?? track.youtubeId ?? track.title;
+}
+
 function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const youtubeMountRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
   const pendingYoutubePlayRef = useRef(false);
+  const pendingAudioPlayRef = useRef(false);
+  const loopModeRef = useRef<LoopMode>("playlist");
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [songMenuOpen, setSongMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [loopMode, setLoopMode] = useState<LoopMode>("playlist");
   const [audioNote, setAudioNote] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; entries: TimedLyric[] } | null>(null);
-  const track = tracks.find((item) => (item.id ?? item.youtubeId ?? item.title) === selectedTrackId) ?? tracks[0];
+  const track = tracks.find((item) => locationTrackKey(item) === selectedTrackId) ?? tracks[0];
+
+  const playNextTrack = useCallback((autoplay: boolean) => {
+    if (tracks.length === 0) return;
+
+    const currentKey = track ? locationTrackKey(track) : selectedTrackId;
+    const currentIndex = tracks.findIndex((item) => locationTrackKey(item) === currentKey);
+    const nextTrack = tracks[currentIndex >= 0 ? (currentIndex + 1) % tracks.length : 0];
+    if (!nextTrack) return;
+
+    pendingYoutubePlayRef.current = autoplay && Boolean(nextTrack.youtubeId);
+    pendingAudioPlayRef.current = autoplay && Boolean(nextTrack.src && !nextTrack.youtubeId);
+    setSelectedTrackId(locationTrackKey(nextTrack));
+    setSongMenuOpen(false);
+    setCurrentTime(0);
+    setLoadedLyrics(null);
+    setPlaying(false);
+    setAudioNote(autoplay && nextTrack.youtubeId ? "Loading player" : null);
+    if (autoplay && nextTrack.youtubeId) setExpanded(true);
+  }, [selectedTrackId, track, tracks]);
+
+  useEffect(() => {
+    loopModeRef.current = loopMode;
+  }, [loopMode]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -628,6 +660,23 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   }, [track?.lyricsUrl]);
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !track?.src || track.youtubeId || !pendingAudioPlayRef.current) return;
+
+    pendingAudioPlayRef.current = false;
+    audio.volume = 0.28;
+    audio.play()
+      .then(() => {
+        setPlaying(true);
+        setAudioNote(null);
+      })
+      .catch(() => {
+        setPlaying(false);
+        setAudioNote("Add licensed audio");
+      });
+  }, [track?.src, track?.youtubeId]);
+
+  useEffect(() => {
     const videoId = track?.youtubeId;
     const mount = youtubeMountRef.current;
     if (!videoId || !expanded || !mount) return;
@@ -643,8 +692,6 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
         height: 200,
         playerVars: {
           controls: 1,
-          loop: 1,
-          playlist: videoId,
           playsinline: 1,
           rel: 0,
         },
@@ -664,7 +711,11 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
             if (event.data === state.PLAYING) setPlaying(true);
             if (event.data === state.PAUSED || event.data === state.CUED) setPlaying(false);
             if (event.data === state.ENDED) {
-              event.target.playVideo();
+              if (loopModeRef.current === "track" || tracks.length === 1) {
+                event.target.playVideo();
+              } else {
+                playNextTrack(true);
+              }
             }
           },
           onError: () => {
@@ -677,12 +728,11 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
 
     return () => {
       active = false;
-      pendingYoutubePlayRef.current = false;
       const player = youtubePlayerRef.current;
       youtubePlayerRef.current = null;
       player?.destroy();
     };
-  }, [track?.youtubeId, expanded]);
+  }, [track?.youtubeId, expanded, playNextTrack, tracks.length]);
 
   useEffect(() => {
     if (!playing) return;
@@ -755,9 +805,11 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
         <audio
           ref={audioRef}
           src={track.src}
-          loop
+          loop={loopMode === "track" || tracks.length === 1}
           preload="none"
-          onEnded={() => setPlaying(false)}
+          onEnded={() => {
+            if (loopMode === "playlist" && tracks.length > 1) playNextTrack(true);
+          }}
           onPause={() => setPlaying(false)}
           onPlay={() => setPlaying(true)}
           onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
@@ -789,6 +841,16 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
             title="Choose song"
           >
             ♪
+          </button>
+          <button
+            className="music-toggle"
+            type="button"
+            onClick={() => setLoopMode((current) => current === "playlist" ? "track" : "playlist")}
+            aria-label={loopMode === "playlist" ? "Switch to current song loop" : "Switch to playlist loop"}
+            aria-pressed={loopMode === "track"}
+            title={loopMode === "playlist" ? "Loop playlist" : "Loop current song"}
+          >
+            {loopMode === "playlist" ? <Repeat size={14} /> : <Repeat1 size={14} />}
           </button>
           <button
             className="music-toggle music-fold"
@@ -833,6 +895,8 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
                 aria-selected={active}
                 onClick={() => {
                   youtubePlayerRef.current?.pauseVideo();
+                  pendingYoutubePlayRef.current = false;
+                  pendingAudioPlayRef.current = false;
                   setSelectedTrackId(key);
                   setSongMenuOpen(false);
                   setCurrentTime(0);
