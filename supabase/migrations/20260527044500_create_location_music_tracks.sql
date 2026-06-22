@@ -33,81 +33,6 @@ on public.location_music_tracks
 for select
 using (is_enabled = true);
 
-insert into public.location_music_tracks (
-  biome_id,
-  title,
-  artist,
-  youtube_id,
-  youtube_url,
-  sort_order,
-  is_enabled
-) values (
-  'akureyri',
-  '冰雨',
-  '刘德华',
-  '90zAJ4tFSy8',
-  'https://youtu.be/90zAJ4tFSy8',
-  10,
-  true
-)
-on conflict (biome_id, youtube_id) do update
-set
-  title = excluded.title,
-  artist = excluded.artist,
-  youtube_url = excluded.youtube_url,
-  sort_order = excluded.sort_order,
-  is_enabled = excluded.is_enabled;
-
-insert into public.location_music_tracks (
-  biome_id,
-  title,
-  artist,
-  youtube_id,
-  youtube_url,
-  sort_order,
-  is_enabled
-) values (
-  'hualien',
-  '等愛降落',
-  '李玟 CoCo Lee',
-  'f2wiVabzsN8',
-  'https://youtu.be/f2wiVabzsN8',
-  10,
-  true
-)
-on conflict (biome_id, youtube_id) do update
-set
-  title = excluded.title,
-  artist = excluded.artist,
-  youtube_url = excluded.youtube_url,
-  sort_order = excluded.sort_order,
-  is_enabled = excluded.is_enabled;
-
-insert into public.location_music_tracks (
-  biome_id,
-  title,
-  artist,
-  youtube_id,
-  youtube_url,
-  sort_order,
-  is_enabled
-) values (
-  'hualien',
-  '往日情',
-  '李玟 CoCo Lee',
-  'qna0SwJtoU4',
-  'https://youtu.be/qna0SwJtoU4',
-  20,
-  true
-)
-on conflict (biome_id, youtube_id) do update
-set
-  title = excluded.title,
-  artist = excluded.artist,
-  youtube_url = excluded.youtube_url,
-  sort_order = excluded.sort_order,
-  is_enabled = excluded.is_enabled;
-
 delete from public.location_music_tracks
 where biome_id = 'akureyri'
   and youtube_id = 'EI_1ey4WSC4';
@@ -120,15 +45,43 @@ insert into public.location_music_tracks (
   youtube_url,
   sort_order,
   is_enabled
-) values (
-  'akureyri',
-  '一念 完整版',
-  '张紫宁 / 李鑫一',
-  'IsZHPjmVM3E',
-  'https://youtu.be/IsZHPjmVM3E',
-  20,
-  true
-)
+) values
+  (
+    'akureyri',
+    '冰雨',
+    '刘德华',
+    '90zAJ4tFSy8',
+    'https://youtu.be/90zAJ4tFSy8',
+    10,
+    true
+  ),
+  (
+    'akureyri',
+    '一念 完整版',
+    '张紫宁 / 李鑫一',
+    'IsZHPjmVM3E',
+    'https://youtu.be/IsZHPjmVM3E',
+    20,
+    true
+  ),
+  (
+    'hualien',
+    '等愛降落',
+    '李玟 CoCo Lee',
+    'f2wiVabzsN8',
+    'https://youtu.be/f2wiVabzsN8',
+    10,
+    true
+  ),
+  (
+    'hualien',
+    '往日情',
+    '李玟 CoCo Lee',
+    'qna0SwJtoU4',
+    'https://youtu.be/qna0SwJtoU4',
+    20,
+    true
+  )
 on conflict (biome_id, youtube_id) do update
 set
   title = excluded.title,

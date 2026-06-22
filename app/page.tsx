@@ -24,6 +24,11 @@ import type {
   TimeOfDay,
 } from "@/lib/weather/open-meteo";
 import {
+  DEFAULT_MUSIC_BY_BIOME,
+  type LocationTrack,
+  type MusicByBiome,
+} from "@/lib/music/tracks";
+import {
   SkyHills, Cottage, StonePath, Greenhouse, WildflowerDrift,
   VegetablePatch, PicketFence, PaperGrain,
   IconSun, IconCloudSun, IconCloudRain, IconCloudLightning, IconSnowflake,
@@ -75,18 +80,6 @@ const GARDEN_PLACES = [
 ];
 
 type GardenPlace = (typeof GARDEN_PLACES)[number];
-
-type LocationTrack = {
-  id?: string;
-  biomeId?: string;
-  title: string;
-  artist: string;
-  src?: string;
-  youtubeId?: string;
-  youtubeUrl?: string;
-  lyricsUrl?: string;
-  lines?: string[];
-};
 
 type TimedLyric = {
   time: number;
@@ -161,53 +154,6 @@ declare global {
 }
 
 let youtubeApiPromise: Promise<void> | null = null;
-
-const FALLBACK_LOCATION_TRACKS: Partial<Record<string, LocationTrack[]>> = {
-  akureyri: [
-    {
-      id: "akureyri-bing-yu",
-      biomeId: "akureyri",
-      title: "冰雨",
-      artist: "刘德华",
-      src: "/audio/akureyri-bing-yu.mp3",
-      youtubeId: "90zAJ4tFSy8",
-      youtubeUrl: "https://youtu.be/90zAJ4tFSy8",
-      lyricsUrl: "/audio/akureyri-bing-yu.lrc",
-      lines: [
-        "冰色的雨落进北方花园",
-        "极光把夜色轻轻照亮",
-        "玻璃温室听见雪的回声",
-        "一行一行，像雨慢慢往下",
-      ],
-    },
-    {
-      id: "akureyri-yi-nian",
-      biomeId: "akureyri",
-      title: "一念 完整版",
-      artist: "张紫宁 / 李鑫一",
-      youtubeId: "IsZHPjmVM3E",
-      youtubeUrl: "https://youtu.be/IsZHPjmVM3E",
-    },
-  ],
-  hualien: [
-    {
-      id: "hualien-deng-ai-jiang-luo",
-      biomeId: "hualien",
-      title: "等愛降落",
-      artist: "李玟 CoCo Lee",
-      youtubeId: "f2wiVabzsN8",
-      youtubeUrl: "https://youtu.be/f2wiVabzsN8",
-    },
-    {
-      id: "hualien-wang-ri-qing",
-      biomeId: "hualien",
-      title: "往日情",
-      artist: "李玟 CoCo Lee",
-      youtubeId: "qna0SwJtoU4",
-      youtubeUrl: "https://youtu.be/qna0SwJtoU4",
-    },
-  ],
-};
 
 const DRAG_STORAGE_PREFIX = "four-seasons:front-page-drag:v2";
 const DRAG_THRESHOLD = 4;
@@ -1211,12 +1157,12 @@ function GardenHotspots() {
 export default function Page() {
   const [biomeId, setBiomeId] = useState<string>(DEFAULT_BIOME_ID);
   const [weatherByBiome, setWeatherByBiome] = useState<Record<string, LiveBiomeWeather>>({});
-  const [musicByBiome, setMusicByBiome] = useState<Record<string, LocationTrack[]>>({});
+  const [musicByBiome, setMusicByBiome] = useState<MusicByBiome>({});
   const [weatherStatus, setWeatherStatus] = useState<"loading" | "ready" | "error">("loading");
   const now = usePreciseClock();
   const biome = useMemo(() => getBiome(biomeId), [biomeId]);
   const weather = weatherByBiome[biome.id];
-  const activeMusicTracks = musicByBiome[biome.id] ?? FALLBACK_LOCATION_TRACKS[biome.id] ?? [];
+  const activeMusicTracks = musicByBiome[biome.id] ?? DEFAULT_MUSIC_BY_BIOME[biome.id] ?? [];
   const timeOfDay = liveTimeOfDay(weather, now);
   const currentWeatherKind = weatherKind(weather);
 
@@ -1255,7 +1201,7 @@ export default function Page() {
       try {
         const response = await fetch("/api/music/playlists");
         if (!response.ok) throw new Error(`Music request failed: ${response.status}`);
-        const payload = (await response.json()) as { byBiome?: Record<string, LocationTrack[]> };
+        const payload = (await response.json()) as { byBiome?: MusicByBiome };
         if (active && payload.byBiome) setMusicByBiome(payload.byBiome);
       } catch (error) {
         console.error("[Four Seasons Garden] music playlists unavailable", error);

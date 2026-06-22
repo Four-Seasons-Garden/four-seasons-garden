@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppShell } from "@/app/components/AppShell";
 import { BIOMES, DEFAULT_BIOME_ID } from "@/lib/constants/biomes";
+import type { MusicByBiome, StoredLocationTrack } from "@/lib/music/tracks";
 import { supabase } from "@/utils/supabase/client";
 
 const ADMIN_EMAIL = "rxyan2@wm.edu";
@@ -18,20 +19,10 @@ type SyncResult = {
   error?: string;
 };
 
-type MusicTrack = {
-  id: string;
-  biomeId: string;
-  title: string;
-  artist: string;
-  youtubeId: string;
-  youtubeUrl: string;
-  sortOrder: number;
-};
-
 type MusicPayload = {
-  tracks?: MusicTrack[];
-  byBiome?: Record<string, MusicTrack[]>;
-  track?: MusicTrack;
+  tracks?: StoredLocationTrack[];
+  byBiome?: MusicByBiome<StoredLocationTrack>;
+  track?: StoredLocationTrack;
   deleted?: string;
   error?: string;
 };
@@ -43,7 +34,7 @@ export default function GardenSutraPage() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"idle" | "running">("idle");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-  const [musicByBiome, setMusicByBiome] = useState<Record<string, MusicTrack[]>>({});
+  const [musicByBiome, setMusicByBiome] = useState<MusicByBiome<StoredLocationTrack>>({});
   const [musicStatus, setMusicStatus] = useState<"idle" | "loading" | "saving">("loading");
   const [musicMessage, setMusicMessage] = useState<string | null>(null);
   const [musicBiomeId, setMusicBiomeId] = useState(DEFAULT_BIOME_ID);

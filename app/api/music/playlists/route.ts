@@ -1,19 +1,14 @@
-import { BIOMES } from "@/lib/constants/biomes";
+import {
+  groupTracksByBiome,
+  isValidBiomeId,
+  LOCATION_TRACK_SELECT,
+  locationTrackFromRow,
+  type LocationTrackRow,
+} from "@/lib/music/tracks";
+import { normalizeYouTubeUrl, parseYouTubeId } from "@/lib/music/youtube";
 import { createSupabaseAdminClient, createSupabaseReadClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-type TrackRow = {
-  id: string;
-  biome_id: string;
-  title: string;
-  artist: string;
-  youtube_id: string;
-  youtube_url: string;
-  sort_order: number;
-  is_enabled: boolean;
-  created_at: string;
-};
 
 type TrackPayload = {
   biomeId?: string;
@@ -23,51 +18,6 @@ type TrackPayload = {
   sortOrder?: number;
   isEnabled?: boolean;
 };
-
-function normalizeTrack(row: TrackRow) {
-  return {
-    id: row.id,
-    biomeId: row.biome_id,
-    title: row.title,
-    artist: row.artist,
-    youtubeId: row.youtube_id,
-    youtubeUrl: row.youtube_url,
-    sortOrder: row.sort_order,
-    isEnabled: row.is_enabled,
-    createdAt: row.created_at,
-  };
-}
-
-function parseYouTubeId(value: string) {
-  const trimmed = value.trim();
-  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
-
-  try {
-    const url = new URL(trimmed);
-    if (url.hostname === "youtu.be") {
-      return url.pathname.split("/").filter(Boolean)[0] ?? null;
-    }
-
-    const fromQuery = url.searchParams.get("v");
-    if (fromQuery) return fromQuery;
-
-    const parts = url.pathname.split("/").filter(Boolean);
-    const marker = parts.findIndex((part) => ["embed", "shorts", "live"].includes(part));
-    if (marker >= 0) return parts[marker + 1] ?? null;
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function normalizeYouTubeUrl(youtubeId: string) {
-  return `https://youtu.be/${youtubeId}`;
-}
-
-function isValidBiome(value: string | undefined) {
-  return Boolean(value && BIOMES.some((biome) => biome.id === value));
-}
 
 async function isAuthorized(request: Request) {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -93,18 +43,15 @@ export async function GET() {
     const supabase = createSupabaseReadClient();
     const { data, error } = await supabase
       .from("location_music_tracks")
-      .select("id, biome_id, title, artist, youtube_id, youtube_url, sort_order, is_enabled, created_at")
+      .select(LOCATION_TRACK_SELECT)
       .order("biome_id", { ascending: true })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
     if (error) throw new Error(error.message);
 
-    const tracks = ((data ?? []) as TrackRow[]).map(normalizeTrack);
-    const byBiome = Object.fromEntries(BIOMES.map((biome) => [
-      biome.id,
-      tracks.filter((track) => track.biomeId === biome.id),
-    ]));
+    const tracks = ((data ?? []) as LocationTrackRow[]).map(locationTrackFromRow);
+    const byBiome = groupTracksByBiome(tracks);
 
     return Response.json({ tracks, byBiome });
   } catch (error) {
@@ -124,7 +71,7 @@ export async function POST(request: Request) {
     const artist = payload.artist?.trim() ?? "";
     const youtubeId = parseYouTubeId(payload.youtubeUrl ?? "");
 
-    if (!isValidBiome(payload.biomeId)) {
+    if (!isValidBiomeId(payload.biomeId)) {
       return Response.json({ error: "Choose a valid location." }, { status: 400 });
     }
 
@@ -148,12 +95,12 @@ export async function POST(request: Request) {
         sort_order: Number.isFinite(payload.sortOrder) ? payload.sortOrder : 100,
         is_enabled: payload.isEnabled ?? true,
       })
-      .select("id, biome_id, title, artist, youtube_id, youtube_url, sort_order, is_enabled, created_at")
+      .select(LOCATION_TRACK_SELECT)
       .single();
 
     if (error) throw new Error(error.message);
 
-    return Response.json({ track: normalizeTrack(data as TrackRow) });
+    return Response.json({ track: locationTrackFromRow(data as LocationTrackRow) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to add music track.";
     return Response.json({ error: message }, { status: 500 });
