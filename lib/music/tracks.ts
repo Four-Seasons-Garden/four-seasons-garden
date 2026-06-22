@@ -98,6 +98,13 @@ export const DEFAULT_LOCATION_TRACKS: LocationTrack[] = [
     artist: "JoeHisaishiVEVO",
     youtubeId: "TK1Ij_-mank",
   },
+  {
+    id: "kyoto-merry-christmas-mr-lawrence",
+    biomeId: "kyoto",
+    title: "Merry Christmas Mr. Lawrence - From Ryuichi Sakamoto: Playing the Piano 2022",
+    artist: "Ryuichi Sakamoto",
+    youtubeId: "ELJf83TelA0",
+  },
 ].map(withNormalizedYouTubeUrl);
 
 export const DEFAULT_MUSIC_BY_BIOME = groupTracksByBiome(DEFAULT_LOCATION_TRACKS);
