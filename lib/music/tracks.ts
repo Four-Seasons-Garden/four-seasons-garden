@@ -91,6 +91,13 @@ export const DEFAULT_LOCATION_TRACKS: LocationTrack[] = [
     artist: "Animenz Piano Sheets",
     youtubeId: "jE0Ym96vmCA",
   },
+  {
+    id: "kyoto-one-summers-day",
+    biomeId: "kyoto",
+    title: "Joe Hisaishi - One Summer's Day",
+    artist: "JoeHisaishiVEVO",
+    youtubeId: "TK1Ij_-mank",
+  },
 ].map(withNormalizedYouTubeUrl);
 
 export const DEFAULT_MUSIC_BY_BIOME = groupTracksByBiome(DEFAULT_LOCATION_TRACKS);
