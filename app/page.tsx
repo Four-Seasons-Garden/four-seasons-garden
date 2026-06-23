@@ -119,6 +119,13 @@ type YouTubePlayerState = {
 type YouTubePlayer = {
   playVideo: () => void;
   pauseVideo: () => void;
+  loadVideoById: (videoId: string) => void;
+  cueVideoById: (videoId: string) => void;
+  loadPlaylist: (playlist: string[], index?: number, startSeconds?: number) => void;
+  cuePlaylist: (playlist: string[], index?: number, startSeconds?: number) => void;
+  getPlaylist: () => string[];
+  getPlaylistIndex: () => number;
+  setLoop: (loopPlaylists: boolean) => void;
   destroy: () => void;
   getCurrentTime: () => number;
 };
@@ -592,9 +599,16 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const youtubeMountRef = useRef<HTMLDivElement>(null);
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
+  const currentYoutubeVideoIdRef = useRef<string | null>(null);
+  const currentYoutubeQueueKeyRef = useRef<string | null>(null);
   const pendingYoutubePlayRef = useRef(false);
   const pendingAudioPlayRef = useRef(false);
   const loopModeRef = useRef<LoopMode>("playlist");
+  const playNextTrackRef = useRef<(autoplay: boolean) => void>(() => undefined);
+  const tracksRef = useRef(tracks);
+  const tracksLengthRef = useRef(tracks.length);
+  const playingRef = useRef(false);
+  const selectedTrackIdRef = useRef<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [songMenuOpen, setSongMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -603,6 +617,11 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   const [audioNote, setAudioNote] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; entries: TimedLyric[] } | null>(null);
+  const youtubePlaylistIds = useMemo(
+    () => tracks.map((item) => item.youtubeId).filter((id): id is string => Boolean(id)),
+    [tracks],
+  );
+  const youtubePlaylistKey = youtubePlaylistIds.join(",");
   const track = tracks.find((item) => locationTrackKey(item) === selectedTrackId) ?? tracks[0];
 
   const playNextTrack = useCallback((autoplay: boolean) => {
@@ -629,11 +648,28 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   }, [loopMode]);
 
   useEffect(() => {
+    playNextTrackRef.current = playNextTrack;
+    tracksRef.current = tracks;
+    tracksLengthRef.current = tracks.length;
+  }, [playNextTrack, tracks]);
+
+  useEffect(() => {
+    selectedTrackIdRef.current = selectedTrackId;
+  }, [selectedTrackId]);
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
+  useEffect(() => {
     const audio = audioRef.current;
-    const youtubePlayer = youtubePlayerRef.current;
+
     return () => {
       audio?.pause();
-      youtubePlayer?.destroy();
+      youtubePlayerRef.current?.destroy();
+      youtubePlayerRef.current = null;
+      currentYoutubeVideoIdRef.current = null;
+      currentYoutubeQueueKeyRef.current = null;
     };
   }, []);
 
@@ -682,16 +718,81 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     if (!videoId || !expanded || !mount) return;
 
     let active = true;
+    const currentVideoId = videoId;
+    const queueIds = loopMode === "playlist" && youtubePlaylistIds.length > 0
+      ? youtubePlaylistIds
+      : [currentVideoId];
+    const queueKey = `${loopMode}:${loopMode === "playlist" ? youtubePlaylistKey : currentVideoId}`;
+    const queueIndex = Math.max(0, queueIds.indexOf(currentVideoId));
+
+    function syncSelectedTrackFromPlayer(player: YouTubePlayer) {
+      const playlist = player.getPlaylist();
+      const playlistIndex = player.getPlaylistIndex();
+      const activeVideoId = playlist[playlistIndex] ?? currentYoutubeVideoIdRef.current;
+      if (!activeVideoId) return;
+
+      currentYoutubeVideoIdRef.current = activeVideoId;
+      const activeTrack = tracksRef.current.find((item) => item.youtubeId === activeVideoId);
+      if (!activeTrack) return;
+
+      const key = locationTrackKey(activeTrack);
+      if (key === selectedTrackIdRef.current) return;
+
+      selectedTrackIdRef.current = key;
+      setSelectedTrackId(key);
+      setCurrentTime(0);
+      setLoadedLyrics(null);
+    }
+
+    function loadYoutubeQueue(player: YouTubePlayer, autoplay: boolean) {
+      currentYoutubeVideoIdRef.current = currentVideoId;
+      currentYoutubeQueueKeyRef.current = queueKey;
+      player.setLoop(loopMode === "playlist");
+      setAudioNote(null);
+
+      if (loopMode === "playlist") {
+        if (autoplay) {
+          player.loadPlaylist(queueIds, queueIndex, 0);
+        } else {
+          player.cuePlaylist(queueIds, queueIndex, 0);
+        }
+        return;
+      }
+
+      if (autoplay) {
+        player.loadVideoById(currentVideoId);
+      } else {
+        player.cueVideoById(currentVideoId);
+      }
+    }
 
     loadYouTubeIframeApi().then(() => {
       if (!active || !window.YT?.Player || !youtubeMountRef.current) return;
 
+      const existingPlayer = youtubePlayerRef.current;
+      if (existingPlayer) {
+        if (currentYoutubeQueueKeyRef.current !== queueKey || currentYoutubeVideoIdRef.current !== videoId) {
+          const shouldAutoplay = pendingYoutubePlayRef.current || playingRef.current;
+          pendingYoutubePlayRef.current = false;
+          loadYoutubeQueue(existingPlayer, shouldAutoplay);
+        } else if (pendingYoutubePlayRef.current) {
+          pendingYoutubePlayRef.current = false;
+          existingPlayer.setLoop(loopMode === "playlist");
+          existingPlayer.playVideo();
+          setAudioNote(null);
+        }
+        return;
+      }
+
+      currentYoutubeVideoIdRef.current = currentVideoId;
+      currentYoutubeQueueKeyRef.current = queueKey;
       youtubePlayerRef.current = new window.YT.Player(youtubeMountRef.current, {
-        videoId,
+        videoId: currentVideoId,
         width: "100%",
         height: 200,
         playerVars: {
           controls: 1,
+          ...(loopMode === "playlist" ? { loop: 1, playlist: queueIds.join(",") } : {}),
           playsinline: 1,
           rel: 0,
         },
@@ -699,22 +800,23 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
           onReady: (event) => {
             if (!active) return;
             youtubePlayerRef.current = event.target;
-            setAudioNote(null);
-            if (pendingYoutubePlayRef.current) {
-              pendingYoutubePlayRef.current = false;
-              event.target.playVideo();
-            }
+            const shouldAutoplay = pendingYoutubePlayRef.current;
+            pendingYoutubePlayRef.current = false;
+            loadYoutubeQueue(event.target, shouldAutoplay);
           },
           onStateChange: (event) => {
             const state = window.YT?.PlayerState;
             if (!state) return;
-            if (event.data === state.PLAYING) setPlaying(true);
+            if (event.data === state.PLAYING) {
+              syncSelectedTrackFromPlayer(event.target);
+              setPlaying(true);
+            }
             if (event.data === state.PAUSED || event.data === state.CUED) setPlaying(false);
             if (event.data === state.ENDED) {
-              if (loopModeRef.current === "track" || tracks.length === 1) {
+              if (loopModeRef.current === "track" || tracksLengthRef.current === 1) {
                 event.target.playVideo();
-              } else {
-                playNextTrack(true);
+              } else if (event.target.getPlaylist().length <= 1) {
+                playNextTrackRef.current(true);
               }
             }
           },
@@ -728,11 +830,19 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
 
     return () => {
       active = false;
-      const player = youtubePlayerRef.current;
-      youtubePlayerRef.current = null;
-      player?.destroy();
     };
-  }, [track?.youtubeId, expanded, playNextTrack, tracks.length]);
+  }, [track?.youtubeId, expanded, loopMode, youtubePlaylistIds, youtubePlaylistKey]);
+
+  useEffect(() => {
+    if (expanded && track?.youtubeId) return;
+
+    const player = youtubePlayerRef.current;
+    youtubePlayerRef.current = null;
+    currentYoutubeVideoIdRef.current = null;
+    currentYoutubeQueueKeyRef.current = null;
+    if (!track?.youtubeId) pendingYoutubePlayRef.current = false;
+    player?.destroy();
+  }, [expanded, track?.youtubeId]);
 
   useEffect(() => {
     if (!playing) return;
@@ -771,6 +881,7 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
 
       if (playing) {
         player.pauseVideo();
+        playingRef.current = false;
       } else {
         player.playVideo();
       }
@@ -859,6 +970,7 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
               if (expanded) {
                 youtubePlayerRef.current?.pauseVideo();
                 pendingYoutubePlayRef.current = false;
+                playingRef.current = false;
                 setPlaying(false);
               }
               setExpanded(!expanded);
@@ -897,6 +1009,8 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
                   youtubePlayerRef.current?.pauseVideo();
                   pendingYoutubePlayRef.current = false;
                   pendingAudioPlayRef.current = false;
+                  playingRef.current = false;
+                  selectedTrackIdRef.current = key;
                   setSelectedTrackId(key);
                   setSongMenuOpen(false);
                   setCurrentTime(0);
