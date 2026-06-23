@@ -747,7 +747,6 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     function loadYoutubeQueue(player: YouTubePlayer, autoplay: boolean) {
       currentYoutubeVideoIdRef.current = currentVideoId;
       currentYoutubeQueueKeyRef.current = queueKey;
-      player.setLoop(loopMode === "playlist");
       setAudioNote(null);
 
       if (loopMode === "playlist") {
@@ -756,9 +755,11 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
         } else {
           player.cuePlaylist(queueIds, queueIndex, 0);
         }
+        player.setLoop(true);
         return;
       }
 
+      player.setLoop(false);
       if (autoplay) {
         player.loadVideoById(currentVideoId);
       } else {
@@ -815,7 +816,15 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
             if (event.data === state.ENDED) {
               if (loopModeRef.current === "track" || tracksLengthRef.current === 1) {
                 event.target.playVideo();
-              } else if (event.target.getPlaylist().length <= 1) {
+                return;
+              }
+
+              const playlist = event.target.getPlaylist();
+              const playlistIndex = event.target.getPlaylistIndex();
+              if (playlist.length > 1 && playlistIndex >= playlist.length - 1) {
+                event.target.loadPlaylist(playlist, 0, 0);
+                event.target.setLoop(true);
+              } else if (playlist.length <= 1) {
                 playNextTrackRef.current(true);
               }
             }
