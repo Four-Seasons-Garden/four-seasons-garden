@@ -78,6 +78,20 @@ export const DEFAULT_LOCATION_TRACKS: LocationTrack[] = [
     youtubeId: "qna0SwJtoU4",
   },
   {
+    id: "hualien-ni-chou-de-yan",
+    biomeId: "hualien",
+    title: "你抽的煙",
+    artist: "許美靜",
+    youtubeId: "zePX5FhsKwE",
+  },
+  {
+    id: "hualien-zhen-ai-wu-di",
+    biomeId: "hualien",
+    title: "真愛無敵 MV [VCD/原版MV字幕]",
+    artist: "許茹芸",
+    youtubeId: "uzeIDQnOEwM",
+  },
+  {
     id: "kyoto-secret-base-lyrics",
     biomeId: "kyoto",
     title: "未聞花名-secret base(中文歌詞字幕內嵌)",
