@@ -1016,7 +1016,7 @@ body {
 
 .learning-japanese {
   font-size: clamp(15px, 1.7vw, 18px);
-  line-height: 1.9;
+  line-height: 2.05;
   letter-spacing: .015em;
 }
 
@@ -1024,6 +1024,7 @@ body {
 .learning-word ruby {
   ruby-position: over;
   ruby-align: center;
+  white-space: nowrap;
 }
 
 .japanese-text rt,
@@ -1031,10 +1032,10 @@ body {
   min-height: 1em;
   color: #a4624a;
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
-  font-size: .52em;
+  font-size: .62em;
   font-weight: 400;
   letter-spacing: .02em;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .learning-translation {
@@ -1061,7 +1062,7 @@ body {
 .learning-word-japanese {
   min-height: 38px;
   font-size: 20px;
-  line-height: 1.9;
+  line-height: 2.05;
 }
 
 .learning-word > p:last-child {
