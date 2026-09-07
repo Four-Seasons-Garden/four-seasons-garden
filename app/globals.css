@@ -861,7 +861,7 @@ body {
 }
 
 .learning-modal {
-  width: min(760px, 100%);
+  width: min(1040px, 100%);
   max-height: min(850px, calc(100vh - 56px));
   display: flex;
   flex-direction: column;
@@ -1011,12 +1011,13 @@ body {
 .learning-japanese,
 .learning-word-japanese,
 .learning-grammar-example {
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
 }
 
 .learning-japanese {
-  font-size: clamp(17px, 2.4vw, 21px);
-  line-height: 2.05;
+  font-size: clamp(15px, 1.7vw, 18px);
+  line-height: 1.9;
+  letter-spacing: .015em;
 }
 
 .japanese-text ruby,
@@ -1029,10 +1030,11 @@ body {
 .learning-word rt {
   min-height: 1em;
   color: #a4624a;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: .46em;
-  font-weight: 500;
-  line-height: 1;
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+  font-size: .52em;
+  font-weight: 400;
+  letter-spacing: .02em;
+  line-height: 1.1;
 }
 
 .learning-translation {
