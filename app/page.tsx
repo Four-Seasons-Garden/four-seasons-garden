@@ -4,9 +4,10 @@
    per biome via CSS variables, plus per-biome weather particle effects. */
 
 import Link from "next/link";
-import { Move, Repeat, Repeat1, Volume2, VolumeX } from "lucide-react";
+import { BookOpen, Move, Repeat, Repeat1, Volume2, VolumeX, X } from "lucide-react";
 import { Solar } from "lunar-typescript";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   CSSProperties,
   MouseEvent as ReactMouseEvent,
@@ -28,6 +29,11 @@ import {
   type LocationTrack,
   type MusicByBiome,
 } from "@/lib/music/tracks";
+import {
+  getJapaneseLearningLesson,
+  type JapaneseLearningLesson,
+  type JapanesePart,
+} from "@/lib/music/learning";
 import {
   SkyHills, Cottage, StonePath, Greenhouse, WildflowerDrift,
   VegetablePatch, PicketFence, PaperGrain,
@@ -591,6 +597,134 @@ function visibleLyrics(entries: TimedLyric[], activeIndex: number) {
   }));
 }
 
+function JapaneseText({ parts }: { parts: JapanesePart[] }) {
+  return (
+    <span className="japanese-text">
+      {parts.map((part, index) => part.reading ? (
+        <ruby key={`${part.text}-${index}`}>
+          {part.text}
+          <rt>{part.reading}</rt>
+        </ruby>
+      ) : (
+        <span key={`${part.text}-${index}`}>{part.text}</span>
+      ))}
+    </span>
+  );
+}
+
+function JapaneseLearningModal({
+  open,
+  track,
+  lesson,
+  onClose,
+}: {
+  open: boolean;
+  track: LocationTrack;
+  lesson: JapaneseLearningLesson | null;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<"sentences" | "words" | "grammar">("sentences");
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  const modal = (
+    <div
+      className="learning-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="learning-modal" role="dialog" aria-modal="true" aria-labelledby="learning-modal-title">
+        <div className="learning-modal-header">
+          <div>
+            <span className="learning-kicker">{lesson?.language ?? "Language study"} · {track.biomeId}</span>
+            <h2 id="learning-modal-title">{lesson?.title ?? track.title}</h2>
+            <p>{lesson?.subtitle ?? "Learning notes for this playlist are coming soon."}</p>
+          </div>
+          <button className="learning-close" type="button" onClick={onClose} aria-label="Close learning notes" title="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {lesson ? (
+          <>
+            <nav className="learning-tabs" aria-label="Learning sections">
+              <button type="button" className={tab === "sentences" ? "is-active" : ""} onClick={() => setTab("sentences")}>句子 <small>Sentences</small></button>
+              <button type="button" className={tab === "words" ? "is-active" : ""} onClick={() => setTab("words")}>单词 <small>Words</small></button>
+              <button type="button" className={tab === "grammar" ? "is-active" : ""} onClick={() => setTab("grammar")}>语法 <small>Grammar</small></button>
+            </nav>
+
+            <div className="learning-modal-scroll">
+              {tab === "sentences" && (
+                <div className="learning-sentence-list">
+                  <p className="learning-hint">Note · Each kanji includes its hiragana reading above it.</p>
+                  {lesson.sentences.map((sentence, index) => (
+                    <article className="learning-sentence" key={`${index}-${sentence.translation}`}>
+                      <span className="learning-index">{String(index + 1).padStart(2, "0")}</span>
+                      <div>
+                        <p className="learning-japanese"><JapaneseText parts={sentence.parts} /></p>
+                        <p className="learning-translation">{sentence.translation}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {tab === "words" && (
+                <div className="learning-word-grid">
+                  {lesson.words.map((word) => (
+                    <article className="learning-word" key={word.word}>
+                      <p className="learning-word-japanese"><ruby>{word.word}<rt>{word.reading}</rt></ruby></p>
+                      <p>{word.meaning}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {tab === "grammar" && (
+                <div className="learning-grammar-list">
+                  {lesson.grammar.map((item) => (
+                    <article className="learning-grammar" key={item.title}>
+                      <h3>{item.title}</h3>
+                      <p>{item.explanation}</p>
+                      <p className="learning-grammar-example"><JapaneseText parts={item.example} /></p>
+                      <p className="learning-translation">{item.translation}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="learning-empty">
+            <BookOpen size={22} />
+            <p>We’re preparing sentence notes, readings, vocabulary, and grammar for this playlist.</p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}
+
 function locationTrackKey(track: LocationTrack) {
   return track.id ?? track.youtubeId ?? track.title;
 }
@@ -613,6 +747,7 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   const [songMenuOpen, setSongMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [learningOpen, setLearningOpen] = useState(false);
   const [loopMode, setLoopMode] = useState<LoopMode>("playlist");
   const [audioNote, setAudioNote] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -876,6 +1011,7 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
       : fallbackLyrics(track.lines ?? []);
   const activeIndex = activeLyricIndex(lyricEntries, currentTime);
   const lyricWindow = visibleLyrics(lyricEntries, activeIndex);
+  const learningLesson = getJapaneseLearningLesson(track);
 
   async function toggleMusic() {
     if (track?.youtubeId) {
@@ -920,6 +1056,7 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   }
 
   return (
+    <>
     <div className="hud-music-card" data-playing={playing} data-expanded={expanded}>
       {track.src && !track.youtubeId && (
         <audio
@@ -971,6 +1108,15 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
             title={loopMode === "playlist" ? "Loop playlist" : "Loop current song"}
           >
             {loopMode === "playlist" ? <Repeat size={14} /> : <Repeat1 size={14} />}
+          </button>
+          <button
+            className="music-toggle music-learning-toggle"
+            type="button"
+            onClick={() => setLearningOpen(true)}
+            aria-label="Open language learning notes"
+            title="Learn from this playlist"
+          >
+            <BookOpen size={14} />
           </button>
           <button
             className="music-toggle music-fold"
@@ -1064,6 +1210,13 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
         </div>
       )}
     </div>
+    <JapaneseLearningModal
+      open={learningOpen}
+      track={track}
+      lesson={learningLesson}
+      onClose={() => setLearningOpen(false)}
+    />
+    </>
   );
 }
 
