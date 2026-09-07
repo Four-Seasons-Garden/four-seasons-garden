@@ -1045,6 +1045,47 @@ body {
   line-height: 1.55;
 }
 
+.learning-section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  color: color-mix(in oklch, var(--hud-text, #3b2a1c) 65%, transparent);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.learning-sort-controls {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(89, 60, 36, .12);
+  border-radius: 999px;
+  background: rgba(255, 252, 240, .42);
+}
+
+.learning-sort-controls button {
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: .08em;
+  cursor: pointer;
+  opacity: .66;
+}
+
+.learning-sort-controls button.is-active,
+.learning-sort-controls button:hover {
+  background: rgba(164, 98, 74, .14);
+  color: #7c4836;
+  opacity: 1;
+}
+
 .learning-word-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1097,6 +1138,7 @@ body {
   margin-top: 10px !important;
   font-size: 18px;
   line-height: 1.9;
+  letter-spacing: .035em;
 }
 
 .learning-empty {
@@ -2102,6 +2144,12 @@ body {
 
   .learning-modal-scroll {
     padding: 15px 12px 18px;
+  }
+
+  .learning-section-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .learning-word-grid {
