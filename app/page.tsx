@@ -612,42 +612,28 @@ function JapaneseText({ parts }: { parts: JapanesePart[] }) {
   );
 }
 
-const KANA_ROMAJI: Record<string, string> = {
-  あ: "a", い: "i", う: "u", え: "e", お: "o",
-  か: "ka", き: "ki", く: "ku", け: "ke", こ: "ko",
-  さ: "sa", し: "shi", す: "su", せ: "se", そ: "so",
-  た: "ta", ち: "chi", つ: "tsu", て: "te", と: "to",
-  な: "na", に: "ni", ぬ: "nu", ね: "ne", の: "no",
-  は: "ha", ひ: "hi", ふ: "fu", へ: "he", ほ: "ho",
-  ま: "ma", み: "mi", む: "mu", め: "me", も: "mo",
-  や: "ya", ゆ: "yu", よ: "yo",
-  ら: "ra", り: "ri", る: "ru", れ: "re", ろ: "ro",
-  わ: "wa", を: "wo", ん: "n",
-  が: "ga", ぎ: "gi", ぐ: "gu", げ: "ge", ご: "go",
-  ざ: "za", じ: "ji", ず: "zu", ぜ: "ze", ぞ: "zo",
-  だ: "da", ぢ: "ji", づ: "zu", で: "de", ど: "do",
-  ば: "ba", び: "bi", ぶ: "bu", べ: "be", ぼ: "bo",
-  ぱ: "pa", ぴ: "pi", ぷ: "pu", ぺ: "pe", ぽ: "po",
-  きゃ: "kya", きゅ: "kyu", きょ: "kyo", しゃ: "sha", しゅ: "shu", しょ: "sho",
-  ちゃ: "cha", ちゅ: "chu", ちょ: "cho", にゃ: "nya", にゅ: "nyu", にょ: "nyo",
-  ひゃ: "hya", ひゅ: "hyu", ひょ: "hyo", みゃ: "mya", みゅ: "myu", みょ: "myo",
-  りゃ: "rya", りゅ: "ryu", りょ: "ryo", ぎゃ: "gya", ぎゅ: "gyu", ぎょ: "gyo",
-  じゃ: "ja", じゅ: "ju", じょ: "jo", びゃ: "bya", びゅ: "byu", びょ: "byo",
-  ぴゃ: "pya", ぴゅ: "pyu", ぴょ: "pyo",
-};
+const GOJUON_MORA = [
+  "あ", "い", "う", "え", "お",
+  "か", "き", "く", "け", "こ", "が", "ぎ", "ぐ", "げ", "ご",
+  "さ", "し", "しゃ", "しゅ", "しょ", "す", "せ", "そ", "ざ", "じ", "じゃ", "じゅ", "じょ", "ず", "ぜ", "ぞ",
+  "た", "ち", "ちゃ", "ちゅ", "ちょ", "つ", "て", "と", "だ", "ぢ", "づ", "で", "ど",
+  "な", "に", "ぬ", "ね", "の",
+  "は", "ひ", "ふ", "へ", "ほ", "ば", "び", "ぶ", "べ", "ぼ", "ぱ", "ぴ", "ぷ", "ぺ", "ぽ",
+  "ま", "み", "む", "め", "も", "や", "ゆ", "よ",
+  "ら", "り", "る", "れ", "ろ", "わ", "を", "ん",
+];
 
-function kanaToRomaji(kana: string) {
-  let romaji = "";
+const GOJUON_INDEX = new Map(GOJUON_MORA.map((mora, index) => [mora, index]));
+
+function kanaToGojuonKey(kana: string) {
+  const key: string[] = [];
   for (let index = 0; index < kana.length; index += 1) {
     const pair = kana.slice(index, index + 2);
-    if (KANA_ROMAJI[pair]) {
-      romaji += KANA_ROMAJI[pair];
-      index += 1;
-      continue;
-    }
-    romaji += KANA_ROMAJI[kana[index]] ?? kana[index];
+    const mora = GOJUON_INDEX.has(pair) ? pair : kana[index];
+    key.push(String(GOJUON_INDEX.get(mora) ?? GOJUON_MORA.length).padStart(3, "0"));
+    if (mora === pair) index += 1;
   }
-  return romaji;
+  return key.join("");
 }
 
 function JapaneseLearningModal({
@@ -662,7 +648,7 @@ function JapaneseLearningModal({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<"sentences" | "words" | "grammar">("sentences");
-  const [wordSort, setWordSort] = useState<"sequence" | "alphabetical">("sequence");
+  const [wordSort, setWordSort] = useState<"sequence" | "gojuon">("sequence");
 
   useEffect(() => {
     if (!open) return;
@@ -683,9 +669,9 @@ function JapaneseLearningModal({
   if (!open || typeof document === "undefined") return null;
 
   const sortedWords = lesson
-    ? wordSort === "alphabetical"
+    ? wordSort === "gojuon"
       ? [...lesson.words].sort((first, second) =>
-        kanaToRomaji(first.reading).localeCompare(kanaToRomaji(second.reading), "en", { sensitivity: "base" }),
+        kanaToGojuonKey(first.reading).localeCompare(kanaToGojuonKey(second.reading)),
       )
       : lesson.words
     : [];
@@ -748,10 +734,10 @@ function JapaneseLearningModal({
                       </button>
                       <button
                         type="button"
-                        className={wordSort === "alphabetical" ? "is-active" : ""}
-                        onClick={() => setWordSort("alphabetical")}
+                        className={wordSort === "gojuon" ? "is-active" : ""}
+                        onClick={() => setWordSort("gojuon")}
                       >
-                        A–Z
+                        あいうえお順
                       </button>
                     </div>
                   </div>
