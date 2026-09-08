@@ -42,12 +42,14 @@ CRON_SECRET=                    # set in Vercel; required by the cron routes whe
 
 ```text
 app/
-  page.tsx                      # the scene, HUD, music player, learning modal
+  page.tsx                      # scene, HUD chips, page composition
   globals.css                   # watercolor CSS, biome palettes, animations, HUD + modal styles
   layout.tsx                    # Cormorant Garamond (display) + Geist Mono (HUD labels)
   components/
     SceneArt.tsx                # cottage, greenhouse, plants, fence, paper grain
     WeatherEffects.tsx          # rain, snow, blossoms, mist, aurora, rainbow, lightning
+    LocationMusic.tsx           # player: playlist, YouTube embed, synced lyrics
+    JapaneseLearningModal.tsx   # lyric-study modal + furigana rendering
     AppShell.tsx, useBiomeWeather.ts
   pond/  greenhouse/  nursery/  garden-sutra/
   api/
@@ -58,14 +60,28 @@ lib/
   constants/biomes.ts           # biome identity, palette (CSS vars), effects flags
   music/tracks.ts               # default playlists per biome
   music/learning.ts             # lesson types + track-to-lesson lookup
-  weather/open-meteo.ts
+  music/japanese-text.ts        # furigana part matching, 五十音順 sorting
+  music/lrc.ts                  # .lrc parsing, visible-lyric window
+  music/youtube.ts              # URL/id parsing, IFrame Player types + loader
+  time/almanac.ts               # zoned clock, Chinese lunar almanac
+  weather/open-meteo.ts         # forecast fetch + normalization
+  weather/display.ts            # weather signal/kind/intensity, formatters
+  ui/useSceneDraggable.ts       # drag hook + localStorage persistence
+  ui/usePreciseClock.ts         # one-second clock
 content/learning/               # lesson JSON (see below)
 supabase/migrations/            # schema + seed migrations
 tools/lyrics-transcriber/       # local-only Python transcription helper (gitignored)
 ```
 
-Components under `app/components/` are `"use client"` — the scene uses `useState`
-and `useId`, and the page itself is a client component.
+The split follows one rule: **anything with real logic and no React coupling
+belongs in `lib/`**, where it can be imported and tested on its own. `app/` holds
+the rendering. So `partIndexesForTerm` (which part of a line a vocabulary entry
+covers) and `kanaToGojuonKey` (kana sort order) live in `lib/music/japanese-text.ts`,
+while the component that renders furigana lives in `app/components/`.
+
+Everything in `app/components/` is `"use client"`, as are the two hooks in
+`lib/ui/`. The page itself is a client component — the scene uses `useState` and
+`useId`. The rest of `lib/` is plain TypeScript with no React import.
 
 ### Biomes
 
