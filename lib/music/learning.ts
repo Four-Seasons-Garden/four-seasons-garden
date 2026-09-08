@@ -6,6 +6,7 @@ export type JapanesePart = {
 };
 
 export type JapaneseSentence = {
+  id: string;
   parts: JapanesePart[];
   translation: string;
 };
@@ -14,6 +15,7 @@ export type JapaneseWord = {
   word: string;
   reading: string;
   meaning: string;
+  sentenceIds: string[];
 };
 
 export type JapaneseGrammar = {
@@ -21,6 +23,7 @@ export type JapaneseGrammar = {
   explanation: string;
   example: JapanesePart[];
   translation: string;
+  sentenceIds: string[];
 };
 
 export type JapaneseLearningLesson = {

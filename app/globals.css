@@ -992,6 +992,13 @@ body {
   border: 1px solid rgba(89, 60, 36, .1);
   border-radius: 13px;
   background: rgba(255, 252, 240, .46);
+  transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
+}
+
+.learning-sentence.is-target {
+  border-color: rgba(164, 98, 74, .68);
+  background: rgba(255, 246, 216, .76);
+  box-shadow: 0 0 0 3px rgba(164, 98, 74, .12);
 }
 
 .learning-index {
@@ -1098,6 +1105,18 @@ body {
   border: 1px solid rgba(89, 60, 36, .1);
   border-radius: 12px;
   background: rgba(255, 252, 240, .46);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.learning-word:hover,
+.learning-word:focus-visible {
+  border-color: rgba(164, 98, 74, .48);
+  background: rgba(255, 246, 216, .7);
+  transform: translateY(-1px);
 }
 
 .learning-word-japanese {
@@ -1114,11 +1133,36 @@ body {
   opacity: .72;
 }
 
+.learning-reference {
+  display: block;
+  margin-top: 9px;
+  color: #a4624a;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: .08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  opacity: .74;
+}
+
 .learning-grammar {
   padding: 15px 16px;
+  border: 0;
   border-left: 2px solid rgba(164, 98, 74, .56);
   border-radius: 0 12px 12px 0;
   background: rgba(255, 252, 240, .46);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.learning-grammar:hover,
+.learning-grammar:focus-visible {
+  border-left-color: #a4624a;
+  background: rgba(255, 246, 216, .7);
+  transform: translateX(1px);
 }
 
 .learning-grammar h3 {

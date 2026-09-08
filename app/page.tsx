@@ -649,6 +649,8 @@ function JapaneseLearningModal({
 }) {
   const [tab, setTab] = useState<"sentences" | "words" | "grammar">("sentences");
   const [wordSort, setWordSort] = useState<"sequence" | "gojuon">("sequence");
+  const [highlightedSentenceId, setHighlightedSentenceId] = useState<string | null>(null);
+  const sentenceRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -666,6 +668,20 @@ function JapaneseLearningModal({
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open || tab !== "sentences" || !highlightedSentenceId) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      sentenceRefs.current[highlightedSentenceId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    const clearHighlight = window.setTimeout(() => setHighlightedSentenceId(null), 1800);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(clearHighlight);
+    };
+  }, [open, tab, highlightedSentenceId]);
+
   if (!open || typeof document === "undefined") return null;
 
   const sortedWords = lesson
@@ -675,6 +691,12 @@ function JapaneseLearningModal({
       )
       : lesson.words
     : [];
+
+  function jumpToSentence(sentenceId?: string) {
+    if (!sentenceId) return;
+    setHighlightedSentenceId(sentenceId);
+    setTab("sentences");
+  }
 
   const modal = (
     <div
@@ -709,7 +731,12 @@ function JapaneseLearningModal({
                 <div className="learning-sentence-list">
                   <p className="learning-hint">Note · Each kanji includes its hiragana reading above it.</p>
                   {lesson.sentences.map((sentence, index) => (
-                    <article className="learning-sentence" key={`${index}-${sentence.translation}`}>
+                    <article
+                      id={`learning-${sentence.id}`}
+                      ref={(element) => { sentenceRefs.current[sentence.id] = element; }}
+                      className={`learning-sentence ${sentence.id === highlightedSentenceId ? "is-target" : ""}`}
+                      key={sentence.id}
+                    >
                       <span className="learning-index">{String(index + 1).padStart(2, "0")}</span>
                       <div>
                         <p className="learning-japanese"><JapaneseText parts={sentence.parts} /></p>
@@ -743,10 +770,17 @@ function JapaneseLearningModal({
                   </div>
                   <div className="learning-word-grid">
                     {sortedWords.map((word) => (
-                      <article className="learning-word" key={word.word}>
+                      <button
+                        className="learning-word"
+                        key={word.word}
+                        type="button"
+                        onClick={() => jumpToSentence(word.sentenceIds[0])}
+                        aria-label={`View ${word.word} in sentence ${word.sentenceIds[0]}`}
+                      >
                         <p className="learning-word-japanese"><ruby>{word.word}<rt>{word.reading}</rt></ruby></p>
                         <p>{word.meaning}</p>
-                      </article>
+                        <span className="learning-reference">Sentences {word.sentenceIds.map((id) => id.slice(1)).join(" · ")} ↗</span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -755,12 +789,19 @@ function JapaneseLearningModal({
               {tab === "grammar" && (
                 <div className="learning-grammar-list">
                   {lesson.grammar.map((item) => (
-                    <article className="learning-grammar" key={item.title}>
+                    <button
+                      className="learning-grammar"
+                      key={item.title}
+                      type="button"
+                      onClick={() => jumpToSentence(item.sentenceIds[0])}
+                      aria-label={`View ${item.title} in sentence ${item.sentenceIds[0]}`}
+                    >
                       <h3>{item.title}</h3>
                       <p>{item.explanation}</p>
                       <p className="learning-grammar-example"><JapaneseText parts={item.example} /></p>
                       <p className="learning-translation">{item.translation}</p>
-                    </article>
+                      <span className="learning-reference">Sentences {item.sentenceIds.map((id) => id.slice(1)).join(" · ")} ↗</span>
+                    </button>
                   ))}
                 </div>
               )}
