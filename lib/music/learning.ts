@@ -54,7 +54,10 @@ export type JapaneseLearningLesson = {
   grammar: JapaneseGrammar[];
 };
 
-export const SECRET_BASE_LESSON: JapaneseLearningLesson = secretBaseLesson;
+// JSON imports widen literal fields to `string`, so `contentType` never matches
+// the LearningContentType union on its own. `npm run validate:learning` is what
+// actually guards the shape of these files.
+export const SECRET_BASE_LESSON = secretBaseLesson as JapaneseLearningLesson;
 
 export function getJapaneseLearningLesson(track: { biomeId: string; youtubeId?: string }) {
   if (track.biomeId === "kyoto" && track.youtubeId === "mIIb3Jf06AA") return SECRET_BASE_LESSON;
