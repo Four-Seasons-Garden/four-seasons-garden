@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://four-seasons-garden.github.io/schemas/learning-lesson.schema.json",
+  "title": "Four Seasons Garden learning lesson",
+  "description": "Shared content contract for song lyrics and literature/article lessons.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "contentType",
+    "language",
+    "title",
+    "subtitle",
+    "source",
+    "sentences",
+    "words",
+    "grammar"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "contentType": {
+      "type": "string",
+      "enum": ["song", "article"]
+    },
+    "language": { "type": "string", "minLength": 1 },
+    "translationLanguage": { "type": "string" },
+    "title": { "type": "string", "minLength": 1 },
+    "subtitle": { "type": "string" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["biomeId"],
+      "properties": {
+        "biomeId": { "type": "string", "minLength": 1 },
+        "trackYoutubeId": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "attribution": { "type": "string" }
+      }
+    },
+    "sentences": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/sentence" }
+    },
+    "words": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/word" }
+    },
+    "grammar": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/grammar" }
+    }
+  },
+  "$defs": {
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "reading": { "type": "string" },
+        "wordIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "grammarIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "sentence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "parts", "translation"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^s[0-9]+$" },
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/part" }
+        },
+        "translation": { "type": "string" }
+      }
+    },
+    "word": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["word", "reading", "meaning", "sentenceIds"],
+      "properties": {
+        "id": { "type": "string" },
+        "word": { "type": "string", "minLength": 1 },
+        "reading": { "type": "string" },
+        "meaning": { "type": "string", "minLength": 1 },
+        "sentenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "grammar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "explanation", "example", "translation", "sentenceIds"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "string", "minLength": 1 },
+        "example": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/part" }
+        },
+        "translation": { "type": "string" },
+        "sentenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,8 +1,19 @@
 import secretBaseLesson from "@/content/learning/ja/kyoto/secret-base.json";
 
+export type LearningContentType = "song" | "article";
+
+export type JapaneseLessonSource = {
+  biomeId: string;
+  trackYoutubeId?: string;
+  url?: string;
+  attribution?: string;
+};
+
 export type JapanesePart = {
   text: string;
   reading?: string;
+  wordIds?: string[];
+  grammarIds?: string[];
 };
 
 export type JapaneseSentence = {
@@ -12,6 +23,7 @@ export type JapaneseSentence = {
 };
 
 export type JapaneseWord = {
+  id?: string;
   word: string;
   reading: string;
   meaning: string;
@@ -19,6 +31,7 @@ export type JapaneseWord = {
 };
 
 export type JapaneseGrammar = {
+  id?: string;
   title: string;
   explanation: string;
   example: JapanesePart[];
@@ -27,9 +40,13 @@ export type JapaneseGrammar = {
 };
 
 export type JapaneseLearningLesson = {
+  id: string;
+  contentType: LearningContentType;
   language: string;
+  translationLanguage?: string;
   title: string;
   subtitle: string;
+  source: JapaneseLessonSource;
   sentences: JapaneseSentence[];
   words: JapaneseWord[];
   grammar: JapaneseGrammar[];

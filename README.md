@@ -70,27 +70,50 @@ Then change the `<html className={...}>` to:
 
 ## Language learning content
 
-Learning material is stored as versioned JSON rather than one TypeScript file per lesson. TypeScript owns the shared schema, lesson lookup, and player behavior; JSON owns the editable Japanese content.
+Learning content is stored as versioned JSON rather than one TypeScript file per lesson. JSON owns the editable lesson; TypeScript owns the shared types, lesson lookup, rendering, sorting, and cross-link behavior. The machine-readable contract is [`content/learning/lesson.schema.json`](content/learning/lesson.schema.json).
 
-Current structure:
+### Content structure
 
 ```text
-content/
-  learning/
-    ja/
-      kyoto/
-        secret-base.json
-lib/music/learning.ts
+content/learning/
+  lesson.schema.json             # shared JSON Schema for every lesson
+  ja/
+    kyoto/
+      secret-base.json           # song lesson: one file per song/article
+    <city-or-biome>/
+      <lesson-id>.json
+lib/music/learning.ts             # shared types + track-to-lesson lookup
 ```
 
-To add another lesson, copy the JSON shape in `content/learning/ja/kyoto/secret-base.json` and add a track lookup in `lib/music/learning.ts` using that track's `biomeId` and `youtubeId`. Keep sentence parts split into `{ "text": "漢字", "reading": "かな" }` objects so the UI can render ruby furigana above each kanji group. Give each sentence a stable `id` such as `s01`, then connect vocabulary and grammar with `sentenceIds` arrays. The sentence view exposes those related vocabulary and grammar entries as clickable links; clicking a Japanese lyric segment or link opens and highlights the matching entry, while clicking an entry jumps back to its source sentence. Vocabulary order in the JSON is the default lesson order; the player can additionally sort it by Japanese 五十音順（あいうえお順）.
+Every lesson must have:
 
-When adding content:
+- `id`: stable kebab-case ID, for example `ja-kyoto-secret-base`.
+- `contentType`: `song` or `article`.
+- `language`, `title`, `subtitle`, and optional `translationLanguage`.
+- `source`: at least `biomeId`; songs should also include `trackYoutubeId`, while articles can include `url` and `attribution`.
+- `sentences`: ordered source lines. Each has a stable ID such as `s01`, `parts`, and a translation.
+- `words`: vocabulary entries with `word`, `reading`, `meaning`, and `sentenceIds`.
+- `grammar`: grammar entries with `title`, `explanation`, `example`, `translation`, and `sentenceIds`.
 
-1. Put the full lesson in a language/city/song JSON file.
-2. Give each sentence a stable ID and add `sentenceIds` to related words and grammar.
-3. Add a lookup entry in `lib/music/learning.ts`.
-4. Run the app and check the sentence, vocabulary, and grammar tabs, including the cross-links.
-5. Commit both the JSON and lookup changes together.
+Keep Japanese text split into `{ "text": "漢字", "reading": "かな" }` parts so the UI can render furigana above each kanji group. For precise future linking, parts may also declare `wordIds` and `grammarIds`; vocabulary and grammar entries may declare stable `id` values. The current Kyoto lesson supports text matching as a compatibility fallback, but new lessons should prefer explicit IDs when a phrase can be ambiguous or conjugated.
 
-This keeps future lessons easy to review, translate, reorder, and eventually migrate to a database without changing the player UI.
+The links are intentionally bidirectional:
+
+```text
+sentence.parts ──► vocabulary / grammar entries
+       ▲                    │
+       └──── sentenceIds ◄──┘
+```
+
+Clicking an underlined Japanese segment or sentence link opens the matching Vocabulary/Grammar entry. Clicking an entry jumps back to and highlights its source sentence. `sentenceIds` must always refer to real sentence IDs in the same lesson.
+
+### Adding a song or article
+
+1. Copy the nearest lesson shape into `content/learning/<language>/<biome>/<lesson-id>.json`.
+2. Set the lesson metadata and source information. Use `contentType: "song"` for lyrics and `contentType: "article"` for literature or reading material.
+3. Add ordered sentence IDs, furigana parts, translations, vocabulary, grammar, and reciprocal `sentenceIds` links. Add explicit part-level IDs where text matching could be unclear.
+4. Add one lookup branch in `lib/music/learning.ts` using the track’s `biomeId` and `youtubeId` (or extend the lookup when article pages are added).
+5. Open the lesson and test all three tabs. Check furigana alignment, Japanese 五十音順（あいうえお順）sorting, sentence → entry links, and entry → sentence links on desktop and mobile.
+6. Run `npm run validate:learning` to check JSON metadata and all cross-reference IDs, then commit the JSON and lookup change together. The same structure is described formally in `content/learning/lesson.schema.json`.
+
+Keep lesson IDs, sentence IDs, vocabulary IDs, and grammar IDs stable after publishing. Reordering content is safe; reusing an old ID for a different meaning is not. This file-based contract keeps lessons easy to review now and gives us a clean migration target for a future database or Supabase table without changing the player UI.

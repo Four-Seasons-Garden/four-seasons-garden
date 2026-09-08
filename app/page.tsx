@@ -701,6 +701,14 @@ function grammarSearchForms(item: JapaneseGrammar) {
   return example ? [example] : [];
 }
 
+function japaneseWordKey(word: JapaneseWord) {
+  return word.id ?? word.word;
+}
+
+function japaneseGrammarKey(item: JapaneseGrammar) {
+  return item.id ?? item.title;
+}
+
 function sentencePartLinks(
   sentence: JapaneseSentence,
   words: JapaneseWord[],
@@ -709,19 +717,36 @@ function sentencePartLinks(
   onGrammarClick: (item: JapaneseGrammar) => void,
 ) {
   const links: Record<number, JapaneseTextLink[]> = {};
+  const wordsById = new Map(words.filter((word) => word.id).map((word) => [word.id, word]));
+  const grammarById = new Map(grammar.filter((item) => item.id).map((item) => [item.id, item]));
+  const explicitWordIds = new Set(sentence.parts.flatMap((part) => part.wordIds ?? []));
+  const explicitGrammarIds = new Set(sentence.parts.flatMap((part) => part.grammarIds ?? []));
   const addLinks = (indexes: number[], link: JapaneseTextLink) => {
     for (const index of indexes) {
       links[index] = [...(links[index] ?? []), link];
     }
   };
 
+  sentence.parts.forEach((part, index) => {
+    for (const wordId of part.wordIds ?? []) {
+      const word = wordsById.get(wordId);
+      if (word) addLinks([index], { label: `Vocabulary: ${word.word}`, onClick: () => onWordClick(word) });
+    }
+    for (const grammarId of part.grammarIds ?? []) {
+      const item = grammarById.get(grammarId);
+      if (item) addLinks([index], { label: `Grammar: ${item.title}`, onClick: () => onGrammarClick(item) });
+    }
+  });
+
   words.forEach((word) => {
+    if (word.id && explicitWordIds.has(word.id)) return;
     addLinks(
       partIndexesForTerm(sentence.parts, wordSearchForms(word.word)),
       { label: `Vocabulary: ${word.word}`, onClick: () => onWordClick(word) },
     );
   });
   grammar.forEach((item) => {
+    if (item.id && explicitGrammarIds.has(item.id)) return;
     addLinks(
       partIndexesForTerm(sentence.parts, grammarSearchForms(item)),
       { label: `Grammar: ${item.title}`, onClick: () => onGrammarClick(item) },
@@ -848,7 +873,7 @@ function JapaneseLearningModal({
 
   function jumpToWord(word: JapaneseWord) {
     setHighlightedSentenceId(null);
-    setHighlightedWord(word.word);
+    setHighlightedWord(japaneseWordKey(word));
     setHighlightedGrammar(null);
     setTab("words");
   }
@@ -856,7 +881,7 @@ function JapaneseLearningModal({
   function jumpToGrammar(item: JapaneseGrammar) {
     setHighlightedSentenceId(null);
     setHighlightedWord(null);
-    setHighlightedGrammar(item.title);
+    setHighlightedGrammar(japaneseGrammarKey(item));
     setTab("grammar");
   }
 
@@ -918,13 +943,13 @@ function JapaneseLearningModal({
                             <div className="learning-sentence-links" aria-label={`Study links for sentence ${index + 1}`}>
                               {sentenceWords.length > 0 && <span className="learning-link-label">Vocabulary</span>}
                               {sentenceWords.map((word) => (
-                                <button key={word.word} type="button" onClick={() => jumpToWord(word)}>
+                                <button key={japaneseWordKey(word)} type="button" onClick={() => jumpToWord(word)}>
                                   {word.word}
                                 </button>
                               ))}
                               {sentenceGrammar.length > 0 && <span className="learning-link-label">Grammar</span>}
                               {sentenceGrammar.map((item) => (
-                                <button key={item.title} type="button" onClick={() => jumpToGrammar(item)}>
+                                <button key={japaneseGrammarKey(item)} type="button" onClick={() => jumpToGrammar(item)}>
                                   {item.title}
                                 </button>
                               ))}
@@ -961,10 +986,10 @@ function JapaneseLearningModal({
                   <div className="learning-word-grid">
                     {sortedWords.map((word) => (
                       <button
-                        key={word.word}
+                        key={japaneseWordKey(word)}
                         type="button"
-                        ref={(element) => { wordRefs.current[word.word] = element; }}
-                        className={`learning-word ${word.word === highlightedWord ? "is-target" : ""}`}
+                        ref={(element) => { wordRefs.current[japaneseWordKey(word)] = element; }}
+                        className={`learning-word ${japaneseWordKey(word) === highlightedWord ? "is-target" : ""}`}
                         onClick={() => jumpToSentence(word.sentenceIds[0])}
                         aria-label={`View ${word.word} in sentence ${word.sentenceIds[0]}`}
                       >
@@ -981,10 +1006,10 @@ function JapaneseLearningModal({
                 <div className="learning-grammar-list">
                   {lesson.grammar.map((item) => (
                     <button
-                      className={`learning-grammar ${item.title === highlightedGrammar ? "is-target" : ""}`}
-                      key={item.title}
+                      className={`learning-grammar ${japaneseGrammarKey(item) === highlightedGrammar ? "is-target" : ""}`}
+                      key={japaneseGrammarKey(item)}
                       type="button"
-                      ref={(element) => { grammarRefs.current[item.title] = element; }}
+                      ref={(element) => { grammarRefs.current[japaneseGrammarKey(item)] = element; }}
                       onClick={() => jumpToSentence(item.sentenceIds[0])}
                       aria-label={`View ${item.title} in sentence ${item.sentenceIds[0]}`}
                     >
