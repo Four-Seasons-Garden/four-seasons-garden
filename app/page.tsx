@@ -4,7 +4,7 @@
    per biome via CSS variables, plus per-biome weather particle effects. */
 
 import Link from "next/link";
-import { BookOpen, Move, Repeat, Repeat1, Volume2, VolumeX, X } from "lucide-react";
+import { BookOpen, Move, Pause, Play, Repeat, Repeat1, X } from "lucide-react";
 import { Solar } from "lunar-typescript";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -700,7 +700,7 @@ function JapaneseLearningModal({
 
   const modal = (
     <div
-      className="learning-modal-backdrop"
+      className="learning-modal-backdrop has-floating-player"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -1150,9 +1150,12 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     }
   }
 
-  return (
-    <>
-    <div className="hud-music-card" data-playing={playing} data-expanded={expanded}>
+  const musicCard = (
+    <div
+      className={`hud-music-card ${learningOpen ? "is-learning-open" : ""}`}
+      data-playing={playing}
+      data-expanded={expanded}
+    >
       {track.src && !track.youtubeId && (
         <audio
           ref={audioRef}
@@ -1235,10 +1238,10 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
             className="music-toggle"
             type="button"
             onClick={toggleMusic}
-            aria-label={playing ? "Mute background music" : "Play background music"}
-            title={playing ? "Mute" : "Play"}
+            aria-label={playing ? "Pause background music" : "Play background music"}
+            title={playing ? "Pause" : "Play"}
           >
-            {playing ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            {playing ? <Pause size={14} /> : <Play size={14} />}
           </button>
         </div>
       </div>
@@ -1305,6 +1308,13 @@ function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+    {learningOpen && typeof document !== "undefined"
+      ? createPortal(musicCard, document.body)
+      : musicCard}
     <JapaneseLearningModal
       open={learningOpen}
       track={track}
