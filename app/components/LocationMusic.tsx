@@ -1,7 +1,8 @@
 "use client";
 
-import { BookOpen, Pause, Play, Repeat, Repeat1 } from "lucide-react";
+import { BookOpen, FastForward, Pause, Play, Repeat, Repeat1, Rewind } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { getJapaneseLearningLesson } from "@/lib/music/learning";
 import type { LocationTrack } from "@/lib/music/tracks";
@@ -16,6 +17,15 @@ import { loadYouTubeIframeApi, type YouTubePlayer } from "@/lib/music/youtube";
 import { JapaneseLearningModal } from "./JapaneseLearningModal";
 
 type LoopMode = "playlist" | "track";
+
+/* One arrow-key tick, and one tap of the rewind/forward buttons. */
+const SEEK_STEP_SECONDS = 3;
+
+function formatClock(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const whole = Math.floor(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}
 
 export function locationTrackKey(track: LocationTrack) {
   return track.id ?? track.youtubeId ?? track.title;
@@ -43,6 +53,10 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
   const [loopMode, setLoopMode] = useState<LoopMode>("playlist");
   const [audioNote, setAudioNote] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [scrubTime, setScrubTime] = useState<number | null>(null);
+  /* A fresh seek is authoritative until the player reports the new position. */
+  const seekGuardUntilRef = useRef(0);
   const [loadedLyrics, setLoadedLyrics] = useState<{ url: string; entries: TimedLyric[] } | null>(null);
   const youtubePlaylistIds = useMemo(
     () => tracks.map((item) => item.youtubeId).filter((id): id is string => Boolean(id)),
@@ -64,6 +78,7 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     setSelectedTrackId(locationTrackKey(nextTrack));
     setSongMenuOpen(false);
     setCurrentTime(0);
+    setDuration(0);
     setLoadedLyrics(null);
     setPlaying(false);
     setAudioNote(autoplay && nextTrack.youtubeId ? "Loading player" : null);
@@ -168,6 +183,7 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
       selectedTrackIdRef.current = key;
       setSelectedTrackId(key);
       setCurrentTime(0);
+      setDuration(0);
       setLoadedLyrics(null);
     }
 
@@ -280,21 +296,35 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     player?.destroy();
   }, [expanded, track?.youtubeId]);
 
+  /* Runs while paused too: the seek bar needs a length before the first play. */
   useEffect(() => {
-    if (!playing) return;
+    /* The player is only partly wired up while an iframe loads, so every read
+       is guarded rather than assumed callable. */
+    const readNumber = (read: () => number | undefined) => {
+      try {
+        const value = read();
+        return typeof value === "number" && Number.isFinite(value) ? value : null;
+      } catch {
+        return null;
+      }
+    };
 
     const interval = window.setInterval(() => {
-      const youtubeTime = youtubePlayerRef.current?.getCurrentTime();
-      if (typeof youtubeTime === "number") {
-        setCurrentTime(youtubeTime);
-        return;
-      }
+      const player = youtubePlayerRef.current;
+      const audio = audioRef.current;
+      const time = readNumber(() => player?.getCurrentTime?.()) ?? (audio ? audio.currentTime : null);
+      const total = readNumber(() => player?.getDuration?.())
+        ?? (audio && Number.isFinite(audio.duration) ? audio.duration : null);
 
-      if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+      if (total !== null && total > 0) {
+        setDuration((current) => (Math.abs(current - total) > 0.5 ? total : current));
+      }
+      if (time === null || Date.now() < seekGuardUntilRef.current) return;
+      setCurrentTime((current) => (Math.abs(current - time) > 0.2 ? time : current));
     }, 350);
 
     return () => window.clearInterval(interval);
-  }, [playing]);
+  }, []);
 
   if (!track) return null;
   const lyricEntries =
@@ -347,11 +377,125 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     }
   }
 
+  const songMenu = (
+    <div className="music-song-menu" role="listbox" aria-label="Choose background song">
+      {tracks.map((candidate) => {
+        const key = locationTrackKey(candidate);
+        const active = key === locationTrackKey(track);
+
+        return (
+          <button
+            key={key}
+            type="button"
+            role="option"
+            aria-selected={active}
+            onClick={() => {
+              youtubePlayerRef.current?.pauseVideo();
+              pendingYoutubePlayRef.current = false;
+              pendingAudioPlayRef.current = false;
+              playingRef.current = false;
+              selectedTrackIdRef.current = key;
+              setSelectedTrackId(key);
+              setSongMenuOpen(false);
+              setCurrentTime(0);
+              setDuration(0);
+              setPlaying(false);
+              setAudioNote(null);
+            }}
+          >
+            <span>{candidate.title}</span>
+            <small>{candidate.artist || "YouTube"}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const seekPosition = scrubTime ?? currentTime;
+  const canSeek = duration > 0;
+
+  /* Both surfaces seek the one live player, whichever kind it is. */
+  function seekTo(seconds: number) {
+    const bounded = Math.min(Math.max(seconds, 0), duration > 0 ? duration : seconds);
+    const player = youtubePlayerRef.current;
+
+    if (track?.youtubeId) {
+      if (typeof player?.seekTo !== "function") return;
+      player.seekTo(bounded, true);
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = bounded;
+    } else {
+      return;
+    }
+
+    seekGuardUntilRef.current = Date.now() + 700;
+    setCurrentTime(bounded);
+  }
+
+  function nudge(deltaSeconds: number) {
+    seekTo(seekPosition + deltaSeconds);
+  }
+
+  function commitScrub() {
+    if (scrubTime === null) return;
+    seekTo(scrubTime);
+    setScrubTime(null);
+  }
+
+  const seekBar = (
+    <div className="music-seek" data-disabled={!canSeek}>
+      <button
+        className="music-seek-step"
+        type="button"
+        onClick={() => nudge(-SEEK_STEP_SECONDS)}
+        disabled={!canSeek}
+        aria-label={`Rewind ${SEEK_STEP_SECONDS} seconds`}
+        title={`Back ${SEEK_STEP_SECONDS}s`}
+      >
+        <Rewind size={13} />
+      </button>
+      <input
+        className="music-seek-range"
+        type="range"
+        min={0}
+        max={canSeek ? Math.round(duration) : 0}
+        step={SEEK_STEP_SECONDS}
+        value={Math.min(Math.round(seekPosition), canSeek ? Math.round(duration) : 0)}
+        disabled={!canSeek}
+        onChange={(event) => setScrubTime(Number(event.currentTarget.value))}
+        onPointerUp={commitScrub}
+        onLostPointerCapture={commitScrub}
+        onPointerCancel={() => setScrubTime(null)}
+        onKeyUp={commitScrub}
+        onBlur={commitScrub}
+        aria-label={`Seek within ${track.title}`}
+        aria-valuetext={`${formatClock(seekPosition)} of ${formatClock(duration)}`}
+        style={{
+          "--seek-progress": `${canSeek ? Math.min(100, (seekPosition / duration) * 100) : 0}%`,
+        } as CSSProperties}
+      />
+      <button
+        className="music-seek-step"
+        type="button"
+        onClick={() => nudge(SEEK_STEP_SECONDS)}
+        disabled={!canSeek}
+        aria-label={`Skip ahead ${SEEK_STEP_SECONDS} seconds`}
+        title={`Forward ${SEEK_STEP_SECONDS}s`}
+      >
+        <FastForward size={13} />
+      </button>
+      <span className="music-seek-clock">
+        {formatClock(seekPosition)} / {canSeek ? formatClock(duration) : "--:--"}
+      </span>
+    </div>
+  );
+
   const musicCard = (
     <div
-      className={`hud-music-card ${learningOpen ? "is-learning-open" : ""}`}
+      className="hud-music-card"
       data-playing={playing}
       data-expanded={expanded}
+      data-learning-open={learningOpen}
     >
       {track.src && !track.youtubeId && (
         <audio
@@ -443,38 +587,7 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
         </div>
       </div>
 
-      {songMenuOpen && (
-        <div className="music-song-menu" role="listbox" aria-label="Choose background song">
-          {tracks.map((candidate) => {
-            const key = candidate.id ?? candidate.youtubeId ?? candidate.title;
-            const active = key === (track.id ?? track.youtubeId ?? track.title);
-
-            return (
-              <button
-                key={key}
-                type="button"
-                role="option"
-                aria-selected={active}
-                onClick={() => {
-                  youtubePlayerRef.current?.pauseVideo();
-                  pendingYoutubePlayRef.current = false;
-                  pendingAudioPlayRef.current = false;
-                  playingRef.current = false;
-                  selectedTrackIdRef.current = key;
-                  setSelectedTrackId(key);
-                  setSongMenuOpen(false);
-                  setCurrentTime(0);
-                  setPlaying(false);
-                  setAudioNote(null);
-                }}
-              >
-                <span>{candidate.title}</span>
-                <small>{candidate.artist || "YouTube"}</small>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {songMenuOpen && songMenu}
 
       <div className="music-details" aria-hidden={!expanded}>
         {!track.youtubeId && (
@@ -507,17 +620,72 @@ export function LocationMusic({ tracks }: { tracks: LocationTrack[] }) {
     </div>
   );
 
+  /* A separate control surface, not the card relocated: moving the card between
+     a portal and its inline slot remounts it, which tears down the live player. */
+  const floatingTransport = (
+    <div className="hud-music-card is-learning-open" data-playing={playing}>
+      <div className="hud-trackline">
+        <button
+          className="music-title-button"
+          type="button"
+          onClick={() => setSongMenuOpen((current) => !current)}
+          aria-haspopup="listbox"
+          aria-expanded={songMenuOpen}
+          title="Choose song"
+        >
+          <b>{track.title}</b>
+          {track.artist && <small>{track.artist}</small>}
+        </button>
+        <div className="music-actions">
+          <button
+            className="music-toggle music-picker-toggle"
+            type="button"
+            onClick={() => setSongMenuOpen((current) => !current)}
+            aria-label="Choose song"
+            aria-expanded={songMenuOpen}
+            title="Choose song"
+          >
+            ♪
+          </button>
+          <button
+            className="music-toggle"
+            type="button"
+            onClick={() => setLoopMode((current) => current === "playlist" ? "track" : "playlist")}
+            aria-label={loopMode === "playlist" ? "Switch to current song loop" : "Switch to playlist loop"}
+            aria-pressed={loopMode === "track"}
+            title={loopMode === "playlist" ? "Loop playlist" : "Loop current song"}
+          >
+            {loopMode === "playlist" ? <Repeat size={14} /> : <Repeat1 size={14} />}
+          </button>
+          <button
+            className="music-toggle"
+            type="button"
+            onClick={toggleMusic}
+            aria-label={playing ? "Pause background music" : "Play background music"}
+            title={playing ? "Pause" : "Play"}
+          >
+            {playing ? <Pause size={14} /> : <Play size={14} />}
+          </button>
+        </div>
+      </div>
+      {songMenuOpen && songMenu}
+      {seekBar}
+      {audioNote && <span className="music-note">{audioNote}</span>}
+    </div>
+  );
+
   return (
     <>
-    {learningOpen && typeof document !== "undefined"
-      ? createPortal(musicCard, document.body)
-      : musicCard}
-    <JapaneseLearningModal
-      open={learningOpen}
-      track={track}
-      lesson={learningLesson}
-      onClose={() => setLearningOpen(false)}
-    />
+      {musicCard}
+      {learningOpen && typeof document !== "undefined"
+        ? createPortal(floatingTransport, document.body)
+        : null}
+      <JapaneseLearningModal
+        open={learningOpen}
+        track={track}
+        lesson={learningLesson}
+        onClose={() => setLearningOpen(false)}
+      />
     </>
   );
 }

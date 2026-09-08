@@ -627,17 +627,128 @@ body {
   box-shadow: 0 12px 30px rgba(42, 28, 17, .22), 0 0 0 1px rgba(255,255,255,.18);
 }
 
-.hud-music-card.is-learning-open .music-learning-toggle,
-.hud-music-card.is-learning-open .music-fold,
-.hud-music-card.is-learning-open .music-details,
-.hud-music-card.is-learning-open .youtube-loop-player,
-.hud-music-card.is-learning-open .music-song-menu {
-  display: none;
-}
-
 .hud-music-card.is-learning-open .music-toggle {
   width: 32px;
   height: 32px;
+}
+
+.hud-music-card.is-learning-open .music-song-menu {
+  max-height: min(46vh, 320px);
+  overflow-y: auto;
+}
+
+/* ─── Seek bar (floating transport above the learning modal) ─── */
+
+.music-seek {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 0 2px;
+}
+
+.music-seek[data-disabled="true"] {
+  opacity: .45;
+}
+
+.music-seek-step {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklch, var(--hud-text) 12%, transparent);
+  background: color-mix(in oklch, var(--hud-text) 6%, transparent);
+  color: var(--hud-text);
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+
+.music-seek-step:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--hud-text) 13%, transparent);
+  transform: scale(1.06);
+}
+
+.music-seek-step:disabled {
+  cursor: default;
+}
+
+.music-seek-clock {
+  flex: 0 0 auto;
+  min-width: 76px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-align: right;
+  opacity: .62;
+  font-variant-numeric: tabular-nums;
+}
+
+.music-seek-range {
+  --seek-progress: 0%;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.music-seek-range:disabled {
+  cursor: default;
+}
+
+.music-seek-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    color-mix(in oklch, var(--hud-text) 62%, transparent) var(--seek-progress),
+    color-mix(in oklch, var(--hud-text) 16%, transparent) var(--seek-progress)
+  );
+}
+
+.music-seek-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--hud-text) 16%, transparent);
+}
+
+.music-seek-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--hud-text) 62%, transparent);
+}
+
+.music-seek-range::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklch, var(--hud-text) 24%, transparent);
+  background: var(--hud-text);
+  box-shadow: 0 1px 4px rgba(42, 28, 17, .35);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.music-seek-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 1px solid color-mix(in oklch, var(--hud-text) 24%, transparent);
+  border-radius: 50%;
+  background: var(--hud-text);
+  box-shadow: 0 1px 4px rgba(42, 28, 17, .35);
+}
+
+.music-seek-range:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--hud-text) 45%, transparent);
+  outline-offset: 3px;
+  border-radius: 999px;
 }
 
 .hud-trackline {
@@ -893,7 +1004,7 @@ body {
 }
 
 .learning-modal-backdrop.has-floating-player {
-  padding-top: 92px;
+  padding-top: 112px;
 }
 
 .learning-modal {
@@ -912,7 +1023,7 @@ body {
 }
 
 .learning-modal-backdrop.has-floating-player .learning-modal {
-  max-height: min(850px, calc(100vh - 120px));
+  max-height: min(850px, calc(100vh - 140px));
 }
 
 .learning-modal-header {
@@ -2295,7 +2406,7 @@ body {
 
   .learning-modal-backdrop.has-floating-player {
     place-items: start center;
-    padding: calc(72px + env(safe-area-inset-top)) 12px 12px;
+    padding: calc(104px + env(safe-area-inset-top)) 12px 12px;
   }
 
   .learning-modal {
@@ -2304,7 +2415,7 @@ body {
   }
 
   .learning-modal-backdrop.has-floating-player .learning-modal {
-    max-height: calc(100dvh - 84px - env(safe-area-inset-top));
+    max-height: calc(100dvh - 116px - env(safe-area-inset-top));
   }
 
   .learning-modal-header {
@@ -2391,12 +2502,25 @@ body {
     height: 36px;
   }
 
+  .music-seek {
+    gap: 6px;
+  }
+
+  .music-seek-step {
+    width: 28px;
+    height: 28px;
+  }
+
+  .music-seek-clock {
+    min-width: 68px;
+  }
+
   .learning-modal-backdrop.has-floating-player {
-    padding: calc(66px + env(safe-area-inset-top)) 8px 8px;
+    padding: calc(102px + env(safe-area-inset-top)) 8px 8px;
   }
 
   .learning-modal-backdrop.has-floating-player .learning-modal {
-    max-height: calc(100dvh - 76px - env(safe-area-inset-top));
+    max-height: calc(100dvh - 112px - env(safe-area-inset-top));
   }
 
   .learning-modal-header {

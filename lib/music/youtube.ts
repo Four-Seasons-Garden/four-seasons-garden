@@ -49,6 +49,8 @@ export type YouTubePlayer = {
   setLoop: (loopPlaylists: boolean) => void;
   destroy: () => void;
   getCurrentTime: () => number;
+  getDuration: () => number;
+  seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
 };
 
 export type YouTubePlayerEvent = {
