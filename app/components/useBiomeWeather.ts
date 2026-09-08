@@ -6,6 +6,19 @@ import type {
   LiveBiomeWeather,
 } from "@/lib/weather/open-meteo";
 
+/* The formatters live in lib/weather/display.ts so the non-React pages and the
+   scene share one implementation. Re-exported here because the garden pages
+   already import them from this module. */
+export {
+  formatClock,
+  formatDateTime,
+  formatInches,
+  formatTemperature,
+} from "@/lib/weather/display";
+
+/* usePreciseClock under its original name here. */
+export { usePreciseClock as useTicker } from "@/lib/ui/usePreciseClock";
+
 export function useBiomeWeather() {
   const [weather, setWeather] = useState<Record<string, LiveBiomeWeather>>({});
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -41,47 +54,4 @@ export function useBiomeWeather() {
   }, []);
 
   return { weather, status, error };
-}
-
-export function useTicker() {
-  const [now, setNow] = useState<Date | null>(null);
-
-  useEffect(() => {
-    const tick = () => setNow(new Date());
-    const firstTick = window.setTimeout(tick, 0);
-    const interval = window.setInterval(tick, 1000);
-    return () => {
-      window.clearTimeout(firstTick);
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  return now;
-}
-
-export function formatTemperature(value: number) {
-  return `${Math.round(value)}°F`;
-}
-
-export function formatClock(date: Date | null, timezone: string) {
-  if (!date) return "--:--:--";
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(date);
-}
-
-export function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-export function formatInches(value: number) {
-  return `${value.toFixed(3)} in`;
 }

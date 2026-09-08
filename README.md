@@ -23,6 +23,7 @@ npm run dev          # http://localhost:3000
 | `npm run build` | Production build (**this** typechecks — `dev` does not) |
 | `npm run start` | Serve a production build |
 | `npm run typecheck` | `tsc --noEmit` — the check `dev` skips |
+| `npm test` | Unit tests for the pure `lib/` modules |
 | `npm run lint` | ESLint |
 | `npm run validate:learning` | Validate lesson JSON + all cross-reference IDs |
 
@@ -83,6 +84,19 @@ while the component that renders furigana lives in `app/components/`.
 Everything in `app/components/` is `"use client"`, as are the two hooks in
 `lib/ui/`. The page itself is a client component — the scene uses `useState` and
 `useId`. The rest of `lib/` is plain TypeScript with no React import.
+
+### Tests
+
+`tests/` covers the pure modules with Node's built-in runner — no test framework
+is installed, and none is needed. Node strips the types and runs the source
+directly, so a test imports `../lib/music/lrc.ts` with the extension included.
+`tests/` is excluded from `tsconfig.json` for that reason.
+
+This only works for modules with no runtime imports, which is the practical
+payoff of the `lib/` boundary: `japanese-text.ts` and `lrc.ts` are reachable from
+a test precisely because they import nothing but types. Modules that reach for
+the `@/` alias at runtime (`weather/display.ts`) are not covered — Node does not
+read `tsconfig` paths.
 
 ### Biomes
 
@@ -180,10 +194,10 @@ does — so a type error runs fine locally and then fails every Vercel build, si
 freezing production on the last deploy that succeeded:
 
 ```bash
-npm run typecheck && npm run lint && npm run validate:learning
+npm run typecheck && npm test && npm run lint && npm run validate:learning
 ```
 
-`.github/workflows/ci.yml` runs those same three on every push to `main` and on
+`.github/workflows/ci.yml` runs those same four on every push to `main` and on
 pull requests, so a type error surfaces in GitHub rather than only in a Vercel
 failure email. The build itself stays Vercel's job — it needs the Supabase
 environment, which CI does not have.

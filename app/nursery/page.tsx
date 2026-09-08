@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/app/components/AppShell";
+import { useBiomeWeather, useTicker } from "@/app/components/useBiomeWeather";
 import {
+  formatCelsius,
   formatClock,
+  formatDateTime,
   formatInches,
+  formatInchesPair,
+  formatMillimeters,
   formatTemperature,
-  useBiomeWeather,
-  useTicker,
-} from "@/app/components/useBiomeWeather";
+  formatTemperaturePair,
+  formatWindPair,
+} from "@/lib/weather/display";
 import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/constants/biomes";
 
 const RANGES = [
@@ -84,48 +89,6 @@ function useHourlyWeather(biomeId: string, range: RangeId) {
   }, [biomeId, range]);
 
   return { payload, status };
-}
-
-function fahrenheitToCelsius(value: number) {
-  return (value - 32) * 5 / 9;
-}
-
-function inchesToMillimeters(value: number) {
-  return value * 25.4;
-}
-
-function mphToKph(value: number) {
-  return value * 1.609344;
-}
-
-function formatCelsius(valueF: number) {
-  return `${Math.round(fahrenheitToCelsius(valueF))}°C`;
-}
-
-function formatMillimeters(valueIn: number) {
-  const millimeters = inchesToMillimeters(valueIn);
-  return `${millimeters.toFixed(millimeters >= 10 ? 1 : 2)} mm`;
-}
-
-function formatTemperaturePair(valueF: number) {
-  return `${formatTemperature(valueF)} / ${formatCelsius(valueF)}`;
-}
-
-function formatInchesPair(valueIn: number) {
-  return `${formatInches(valueIn)} / ${formatMillimeters(valueIn)}`;
-}
-
-function formatWindPair(valueMph: number) {
-  return `${Math.round(valueMph)} mph / ${Math.round(mphToKph(valueMph))} km/h`;
-}
-
-function formatStatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -417,13 +380,13 @@ function buildWeatherStats(rows: HourlyPoint[]): WeatherStat[] {
       label: "High temperature",
       english: formatTemperature(highTemp.temperatureF),
       metric: formatCelsius(highTemp.temperatureF),
-      detail: formatStatDate(highTemp.time),
+      detail: formatDateTime(highTemp.time),
     },
     {
       label: "Low temperature",
       english: formatTemperature(lowTemp.temperatureF),
       metric: formatCelsius(lowTemp.temperatureF),
-      detail: formatStatDate(lowTemp.time),
+      detail: formatDateTime(lowTemp.time),
     },
     {
       label: "Total precipitation",
@@ -439,7 +402,7 @@ function buildWeatherStats(rows: HourlyPoint[]): WeatherStat[] {
       label: "Wettest hour",
       english: formatInches(wettestHour.precipitationIn),
       metric: formatMillimeters(wettestHour.precipitationIn),
-      detail: formatStatDate(wettestHour.time),
+      detail: formatDateTime(wettestHour.time),
     },
     {
       label: "Rain total",

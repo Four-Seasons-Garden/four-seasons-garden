@@ -1,17 +1,74 @@
 import type { LiveBiomeWeather, TimeOfDay } from "@/lib/weather/open-meteo";
-import { localTimeMinutes, zonedMinutes } from "@/lib/time/almanac";
+import { formatZonedClock, localTimeMinutes, zonedMinutes } from "@/lib/time/almanac";
 
 /* Format a lat/lon decimal as "37.27° N" */
-export function fmtCoord(value: number, pos: string, neg: string) {
+export function formatCoord(value: number, pos: string, neg: string) {
   return `${Math.abs(value).toFixed(2)}° ${value >= 0 ? pos : neg}`;
 }
 
-export function fmtTemperature(value: number) {
+export function formatTemperature(value: number) {
   return `${Math.round(value)}°F`;
+}
+
+export function formatInches(value: number) {
+  return `${value.toFixed(3)} in`;
 }
 
 export function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/* ─────────── Metric equivalents ─────────── */
+
+export function fahrenheitToCelsius(value: number) {
+  return (value - 32) * 5 / 9;
+}
+
+export function inchesToMillimeters(value: number) {
+  return value * 25.4;
+}
+
+export function mphToKph(value: number) {
+  return value * 1.609344;
+}
+
+export function formatCelsius(valueF: number) {
+  return `${Math.round(fahrenheitToCelsius(valueF))}°C`;
+}
+
+export function formatMillimeters(valueIn: number) {
+  const millimeters = inchesToMillimeters(valueIn);
+  return `${millimeters.toFixed(millimeters >= 10 ? 1 : 2)} mm`;
+}
+
+/* "72°F / 22°C" — the nursery stat readouts show both systems. */
+export function formatTemperaturePair(valueF: number) {
+  return `${formatTemperature(valueF)} / ${formatCelsius(valueF)}`;
+}
+
+export function formatInchesPair(valueIn: number) {
+  return `${formatInches(valueIn)} / ${formatMillimeters(valueIn)}`;
+}
+
+export function formatWindPair(valueMph: number) {
+  return `${Math.round(valueMph)} mph / ${Math.round(mphToKph(valueMph))} km/h`;
+}
+
+/* ─────────── Timestamps ─────────── */
+
+/* Zoned clock with the placeholder the HUD shows before the first tick. */
+export function formatClock(date: Date | null, timezone: string) {
+  if (!date) return "--:--:--";
+  return formatZonedClock(date, timezone);
+}
+
+export function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 /* Split the day using real sunrise/sunset, falling back to fixed hours

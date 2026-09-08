@@ -29,8 +29,8 @@ import {
 } from "@/lib/music/tracks";
 import { buildAlmanac, formatZonedClock } from "@/lib/time/almanac";
 import {
-  fmtCoord,
-  fmtTemperature,
+  formatCoord,
+  formatTemperature,
   liveRainIntensity,
   liveTimeOfDay,
   titleCase,
@@ -133,7 +133,7 @@ function HudWeather({
     status === "error" ? "Live · unavailable" :
     "Live · syncing";
   const value = weather
-    ? `${fmtTemperature(weather.current.temperatureF)} · ${weather.current.weatherLabel}`
+    ? `${formatTemperature(weather.current.temperatureF)} · ${weather.current.weatherLabel}`
     : biome.theme.keyFeature;
   const detail = weather
     ? `${titleCase(timeOfDay)} · ${weather.current.moon.phase} · Wind ${Math.round(weather.current.windSpeedMph)} mph`
@@ -219,7 +219,7 @@ function HudWeather({
             const isActive = candidate.id === biome.id;
             const candidateWeather = weatherByBiome[candidate.id];
             const optionLabel = candidateWeather
-              ? `${fmtTemperature(candidateWeather.current.temperatureF)} · ${candidateWeather.current.weatherLabel}`
+              ? `${formatTemperature(candidateWeather.current.temperatureF)} · ${candidateWeather.current.weatherLabel}`
               : candidate.theme.label;
 
             return (
@@ -284,7 +284,7 @@ function HudMark({ biome }: { biome: Biome }) {
       <span className="wm">Four Seasons <em>Garden</em></span>
       <span className="rule" />
       <span className="tag">
-        {fmtCoord(biome.coords.lat, "N", "S")} · {fmtCoord(biome.coords.lon, "E", "W")}
+        {formatCoord(biome.coords.lat, "N", "S")} · {formatCoord(biome.coords.lon, "E", "W")}
       </span>
     </div>
   );
