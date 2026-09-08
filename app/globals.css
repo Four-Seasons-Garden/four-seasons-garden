@@ -1096,6 +1096,11 @@ body {
   cursor: pointer;
 }
 
+.japanese-text-plain-part {
+  display: inline-block;
+  min-width: .42em;
+}
+
 .japanese-text-part-link:hover,
 .japanese-text-part-link:focus-visible {
   border-bottom-style: solid;

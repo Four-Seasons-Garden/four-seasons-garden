@@ -622,7 +622,7 @@ function JapaneseText({
             <rt>{part.reading}</rt>
           </ruby>
         ) : (
-          <span>{part.text}</span>
+          <span className="japanese-text-plain-part">{part.text}</span>
         );
 
         if (links.length === 0) {
