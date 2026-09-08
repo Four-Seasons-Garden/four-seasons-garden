@@ -12,6 +12,7 @@
     "title",
     "subtitle",
     "source",
+    "sequence",
     "sentences",
     "words",
     "grammar"
@@ -39,6 +40,11 @@
         "url": { "type": "string", "format": "uri" },
         "attribution": { "type": "string" }
       }
+    },
+    "sequence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
     },
     "sentences": {
       "type": "array",

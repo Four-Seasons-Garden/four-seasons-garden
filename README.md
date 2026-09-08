@@ -91,7 +91,8 @@ Every lesson must have:
 - `contentType`: `song` or `article`.
 - `language`, `title`, `subtitle`, and optional `translationLanguage`.
 - `source`: at least `biomeId`; songs should also include `trackYoutubeId`, while articles can include `url` and `attribution`.
-- `sentences`: ordered source lines. Each has a stable ID such as `s01`, `parts`, and a translation.
+- `sequence`: the exact reading/listening order as sentence IDs. Repeated lyric lines should repeat their ID here instead of duplicating lesson content.
+- `sentences`: the canonical source lines. Each has a stable ID such as `s01`, `parts`, and a translation.
 - `words`: vocabulary entries with `word`, `reading`, `meaning`, and `sentenceIds`.
 - `grammar`: grammar entries with `title`, `explanation`, `example`, `translation`, and `sentenceIds`.
 
@@ -111,7 +112,7 @@ Clicking an underlined Japanese segment or sentence link opens the matching Voca
 
 1. Copy the nearest lesson shape into `content/learning/<language>/<biome>/<lesson-id>.json`.
 2. Set the lesson metadata and source information. Use `contentType: "song"` for lyrics and `contentType: "article"` for literature or reading material.
-3. Add ordered sentence IDs, furigana parts, translations, vocabulary, grammar, and reciprocal `sentenceIds` links. Add explicit part-level IDs where text matching could be unclear.
+3. Add the exact ordered `sequence` (including repeated choruses), canonical sentence IDs, furigana parts, translations, vocabulary, grammar, and reciprocal `sentenceIds` links. Add explicit part-level IDs where text matching could be unclear.
 4. Add one lookup branch in `lib/music/learning.ts` using the track’s `biomeId` and `youtubeId` (or extend the lookup when article pages are added).
 5. Open the lesson and test all three tabs. Check furigana alignment, Japanese 五十音順（あいうえお順）sorting, sentence → entry links, and entry → sentence links on desktop and mobile.
 6. Run `npm run validate:learning` to check JSON metadata and all cross-reference IDs, then commit the JSON and lookup change together. The same structure is described formally in `content/learning/lesson.schema.json`.
