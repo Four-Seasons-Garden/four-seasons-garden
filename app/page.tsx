@@ -928,7 +928,7 @@ function JapaneseLearningModal({
             <div className="learning-modal-scroll">
               {tab === "sentences" && (
                 <div className="learning-sentence-list">
-                  <p className="learning-hint">Note · Each kanji includes its hiragana reading above it. Tap underlined Japanese text or a link chip to study it.</p>
+                  <p className="learning-hint">Lyrics · {lesson.sequence.length} source lines · {lesson.sentences.length} linked entries. Each kanji includes its hiragana reading above it. Tap underlined Japanese text or a link chip to study it.</p>
                   {sentenceBlocks.map((block, blockIndex) => (
                     <div className="learning-lyric-block" key={`lyric-block-${blockIndex}`}>
                       {block.map(({ sentence, occurrenceIndex }) => {
