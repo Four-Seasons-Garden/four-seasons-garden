@@ -19,6 +19,12 @@ import {
 } from "@/lib/music/japanese-text";
 import type { LocationTrack } from "@/lib/music/tracks";
 
+/* A sentence ID is not unique in the rendered list — a chorus line repeats.
+   Occurrence index is what identifies one rendered row. */
+function sentenceKey(sentenceId: string, occurrenceIndex: number) {
+  return `${sentenceId}-${occurrenceIndex}`;
+}
+
 /* Renders furigana over each kanji group. Parts without a reading stay plain so
    particles remain visible beside the ruby text. */
 export function JapaneseText({
@@ -75,7 +81,7 @@ export function JapaneseLearningModal({
 }) {
   const [tab, setTab] = useState<"sentences" | "words" | "grammar">("sentences");
   const [wordSort, setWordSort] = useState<"sequence" | "gojuon">("sequence");
-  const [highlightedSentenceId, setHighlightedSentenceId] = useState<string | null>(null);
+  const [highlightedSentenceKey, setHighlightedSentenceKey] = useState<string | null>(null);
   const [highlightedWord, setHighlightedWord] = useState<string | null>(null);
   const [highlightedGrammar, setHighlightedGrammar] = useState<string | null>(null);
   const sentenceRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -99,18 +105,18 @@ export function JapaneseLearningModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || tab !== "sentences" || !highlightedSentenceId) return;
+    if (!open || tab !== "sentences" || !highlightedSentenceKey) return;
 
     const frame = window.requestAnimationFrame(() => {
-      sentenceRefs.current[highlightedSentenceId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      sentenceRefs.current[highlightedSentenceKey]?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-    const clearHighlight = window.setTimeout(() => setHighlightedSentenceId(null), 1800);
+    const clearHighlight = window.setTimeout(() => setHighlightedSentenceKey(null), 1800);
 
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(clearHighlight);
     };
-  }, [open, tab, highlightedSentenceId]);
+  }, [open, tab, highlightedSentenceKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -157,23 +163,29 @@ export function JapaneseLearningModal({
     }).filter((item): item is { sentence: JapaneseSentence; occurrenceIndex: number } => Boolean(item.sentence)))
     : [];
 
+  /* Land on the first time the line appears, not the last one rendered. */
   function jumpToSentence(sentenceId?: string) {
     if (!sentenceId) return;
-    setHighlightedSentenceId(sentenceId);
+    const firstOccurrence = sentenceBlocks
+      .flat()
+      .find((item) => item.sentence.id === sentenceId);
+    if (!firstOccurrence) return;
+
+    setHighlightedSentenceKey(sentenceKey(sentenceId, firstOccurrence.occurrenceIndex));
     setHighlightedWord(null);
     setHighlightedGrammar(null);
     setTab("sentences");
   }
 
   function jumpToWord(word: JapaneseWord) {
-    setHighlightedSentenceId(null);
+    setHighlightedSentenceKey(null);
     setHighlightedWord(japaneseWordKey(word));
     setHighlightedGrammar(null);
     setTab("words");
   }
 
   function jumpToGrammar(item: JapaneseGrammar) {
-    setHighlightedSentenceId(null);
+    setHighlightedSentenceKey(null);
     setHighlightedWord(null);
     setHighlightedGrammar(japaneseGrammarKey(item));
     setTab("grammar");
@@ -227,8 +239,8 @@ export function JapaneseLearningModal({
                         return (
                           <article
                             id={`learning-${sentence.id}-${occurrenceIndex + 1}`}
-                            ref={(element) => { sentenceRefs.current[sentence.id] = element; }}
-                            className={`learning-sentence ${sentence.id === highlightedSentenceId ? "is-target" : ""}`}
+                            ref={(element) => { sentenceRefs.current[sentenceKey(sentence.id, occurrenceIndex)] = element; }}
+                            className={`learning-sentence ${sentenceKey(sentence.id, occurrenceIndex) === highlightedSentenceKey ? "is-target" : ""}`}
                             key={`${sentence.id}-${occurrenceIndex}`}
                           >
                             <span className="learning-index">{String(occurrenceIndex + 1).padStart(2, "0")}</span>

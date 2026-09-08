@@ -22,6 +22,7 @@ npm run dev          # http://localhost:3000
 | `npm run dev` | Dev server |
 | `npm run build` | Production build (**this** typechecks — `dev` does not) |
 | `npm run start` | Serve a production build |
+| `npm run typecheck` | `tsc --noEmit` — the check `dev` skips |
 | `npm run lint` | ESLint |
 | `npm run validate:learning` | Validate lesson JSON + all cross-reference IDs |
 
@@ -179,5 +180,13 @@ does — so a type error runs fine locally and then fails every Vercel build, si
 freezing production on the last deploy that succeeded:
 
 ```bash
-npx tsc --noEmit && npm run validate:learning
+npm run typecheck && npm run lint && npm run validate:learning
 ```
+
+`.github/workflows/ci.yml` runs those same three on every push to `main` and on
+pull requests, so a type error surfaces in GitHub rather than only in a Vercel
+failure email. The build itself stays Vercel's job — it needs the Supabase
+environment, which CI does not have.
+
+A red Vercel deploy does not roll production back; it leaves the previous
+successful deploy serving. Check `vercel ls` if the site looks stale.
