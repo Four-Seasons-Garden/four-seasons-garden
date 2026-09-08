@@ -67,3 +67,29 @@ Then change the `<html className={...}>` to:
 - Everything inside `app/components/` is marked `"use client"` since the scene uses `useState` and `useId`. The page itself is also a client component.
 - No external image assets are needed — the entire scene is SVG.
 - The five biomes (Williamsburg, Akureyri, Hualien, Kyoto, Mānoa) are unchanged in identity but their visual treatment is new.
+
+## Language learning content
+
+Learning material is stored as versioned JSON rather than one TypeScript file per lesson. TypeScript owns the shared schema, lesson lookup, and player behavior; JSON owns the editable Japanese content.
+
+Current structure:
+
+```text
+content/
+  learning/
+    ja/
+      kyoto/
+        secret-base.json
+lib/music/learning.ts
+```
+
+To add another lesson, copy the JSON shape in `content/learning/ja/kyoto/secret-base.json` and add a track lookup in `lib/music/learning.ts` using that track's `biomeId` and `youtubeId`. Keep sentence parts split into `{ "text": "漢字", "reading": "かな" }` objects so the UI can render ruby furigana above each kanji group. Vocabulary order in the JSON is the default lesson order; the player can additionally sort it by Japanese 五十音順（あいうえお順）.
+
+When adding content:
+
+1. Put the full lesson in a language/city/song JSON file.
+2. Add a lookup entry in `lib/music/learning.ts`.
+3. Run the app and check the sentence, vocabulary, and grammar tabs.
+4. Commit both the JSON and lookup changes together.
+
+This keeps future lessons easy to review, translate, reorder, and eventually migrate to a database without changing the player UI.
