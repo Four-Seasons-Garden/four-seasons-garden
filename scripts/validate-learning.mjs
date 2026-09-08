@@ -33,7 +33,7 @@ for (const file of lessonFiles) {
     fail(file, `invalid JSON (${error.message})`);
   }
 
-  for (const field of ["id", "contentType", "language", "title", "subtitle", "source", "sequence", "sentences", "words", "grammar"]) {
+  for (const field of ["id", "contentType", "language", "title", "subtitle", "source", "sequence", "blocks", "sentences", "words", "grammar"]) {
     if (!(field in lesson)) fail(file, `missing required field '${field}'`);
   }
   if (!["song", "article"].includes(lesson.contentType)) fail(file, "contentType must be song or article");
@@ -54,6 +54,9 @@ for (const file of lessonFiles) {
     }
   }
   for (const id of lesson.sequence) if (!sentenceIds.has(id)) fail(file, `sequence references missing sentence ID '${id}'`);
+  const flattenedBlocks = lesson.blocks.flat();
+  if (JSON.stringify(flattenedBlocks) !== JSON.stringify(lesson.sequence)) fail(file, "blocks must flatten to sequence exactly");
+  for (const id of flattenedBlocks) if (!sentenceIds.has(id)) fail(file, `blocks reference missing sentence ID '${id}'`);
 
   const wordIds = uniqueIds(lesson.words, "Vocabulary", file);
   const grammarIds = uniqueIds(lesson.grammar, "Grammar", file);

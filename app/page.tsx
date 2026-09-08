@@ -863,11 +863,16 @@ function JapaneseLearningModal({
       : lesson.words
     : [];
   const sentenceById = lesson ? new Map(lesson.sentences.map((sentence) => [sentence.id, sentence])) : new Map();
-  const sentenceSequence = lesson
-    ? lesson.sequence.map((sentenceId, occurrenceIndex) => ({
-      sentence: sentenceById.get(sentenceId),
-      occurrenceIndex,
-    })).filter((item): item is { sentence: JapaneseSentence; occurrenceIndex: number } => Boolean(item.sentence))
+  let sentenceOccurrenceIndex = 0;
+  const sentenceBlocks = lesson
+    ? lesson.blocks.map((block) => block.map((sentenceId) => {
+      const item = {
+        sentence: sentenceById.get(sentenceId),
+        occurrenceIndex: sentenceOccurrenceIndex,
+      };
+      sentenceOccurrenceIndex += 1;
+      return item;
+    }).filter((item): item is { sentence: JapaneseSentence; occurrenceIndex: number } => Boolean(item.sentence)))
     : [];
 
   function jumpToSentence(sentenceId?: string) {
@@ -924,48 +929,52 @@ function JapaneseLearningModal({
               {tab === "sentences" && (
                 <div className="learning-sentence-list">
                   <p className="learning-hint">Note · Each kanji includes its hiragana reading above it. Tap underlined Japanese text or a link chip to study it.</p>
-                  {sentenceSequence.map(({ sentence, occurrenceIndex }) => {
-                    const sentenceWords = lesson.words.filter((word) => word.sentenceIds.includes(sentence.id));
-                    const sentenceGrammar = lesson.grammar.filter((item) => item.sentenceIds.includes(sentence.id));
-                    const partLinks = sentencePartLinks(
-                      sentence,
-                      sentenceWords,
-                      sentenceGrammar,
-                      jumpToWord,
-                      jumpToGrammar,
-                    );
+                  {sentenceBlocks.map((block, blockIndex) => (
+                    <div className="learning-lyric-block" key={`lyric-block-${blockIndex}`}>
+                      {block.map(({ sentence, occurrenceIndex }) => {
+                        const sentenceWords = lesson.words.filter((word) => word.sentenceIds.includes(sentence.id));
+                        const sentenceGrammar = lesson.grammar.filter((item) => item.sentenceIds.includes(sentence.id));
+                        const partLinks = sentencePartLinks(
+                          sentence,
+                          sentenceWords,
+                          sentenceGrammar,
+                          jumpToWord,
+                          jumpToGrammar,
+                        );
 
-                    return (
-                      <article
-                        id={`learning-${sentence.id}-${occurrenceIndex + 1}`}
-                        ref={(element) => { sentenceRefs.current[sentence.id] = element; }}
-                        className={`learning-sentence ${sentence.id === highlightedSentenceId ? "is-target" : ""}`}
-                        key={`${sentence.id}-${occurrenceIndex}`}
-                      >
-                        <span className="learning-index">{String(occurrenceIndex + 1).padStart(2, "0")}</span>
-                        <div>
-                          <p className="learning-japanese"><JapaneseText parts={sentence.parts} partLinks={partLinks} /></p>
-                          <p className="learning-translation">{sentence.translation}</p>
-                          {(sentenceWords.length > 0 || sentenceGrammar.length > 0) && (
-                            <div className="learning-sentence-links" aria-label={`Study links for sentence ${occurrenceIndex + 1}`}>
-                              {sentenceWords.length > 0 && <span className="learning-link-label">Vocabulary</span>}
-                              {sentenceWords.map((word) => (
-                                <button key={japaneseWordKey(word)} type="button" onClick={() => jumpToWord(word)}>
-                                  {word.word}
-                                </button>
-                              ))}
-                              {sentenceGrammar.length > 0 && <span className="learning-link-label">Grammar</span>}
-                              {sentenceGrammar.map((item) => (
-                                <button key={japaneseGrammarKey(item)} type="button" onClick={() => jumpToGrammar(item)}>
-                                  {item.title}
-                                </button>
-                              ))}
+                        return (
+                          <article
+                            id={`learning-${sentence.id}-${occurrenceIndex + 1}`}
+                            ref={(element) => { sentenceRefs.current[sentence.id] = element; }}
+                            className={`learning-sentence ${sentence.id === highlightedSentenceId ? "is-target" : ""}`}
+                            key={`${sentence.id}-${occurrenceIndex}`}
+                          >
+                            <span className="learning-index">{String(occurrenceIndex + 1).padStart(2, "0")}</span>
+                            <div>
+                              <p className="learning-japanese"><JapaneseText parts={sentence.parts} partLinks={partLinks} /></p>
+                              <p className="learning-translation">{sentence.translation}</p>
+                              {(sentenceWords.length > 0 || sentenceGrammar.length > 0) && (
+                                <div className="learning-sentence-links" aria-label={`Study links for sentence ${occurrenceIndex + 1}`}>
+                                  {sentenceWords.length > 0 && <span className="learning-link-label">Vocabulary</span>}
+                                  {sentenceWords.map((word) => (
+                                    <button key={japaneseWordKey(word)} type="button" onClick={() => jumpToWord(word)}>
+                                      {word.word}
+                                    </button>
+                                  ))}
+                                  {sentenceGrammar.length > 0 && <span className="learning-link-label">Grammar</span>}
+                                  {sentenceGrammar.map((item) => (
+                                    <button key={japaneseGrammarKey(item)} type="button" onClick={() => jumpToGrammar(item)}>
+                                      {item.title}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               )}
 

@@ -92,6 +92,7 @@ Every lesson must have:
 - `language`, `title`, `subtitle`, and optional `translationLanguage`.
 - `source`: at least `biomeId`; songs should also include `trackYoutubeId`, while articles can include `url` and `attribution`.
 - `sequence`: the exact reading/listening order as sentence IDs. Repeated lyric lines should repeat their ID here instead of duplicating lesson content.
+- `blocks`: the visual lyric/reading groups in source order. Flattening `blocks` must equal `sequence`; this preserves chorus and paragraph groupings without losing cross-links.
 - `sentences`: the canonical source lines. Each has a stable ID such as `s01`, `parts`, and a translation.
 - `words`: vocabulary entries with `word`, `reading`, `meaning`, and `sentenceIds`.
 - `grammar`: grammar entries with `title`, `explanation`, `example`, `translation`, and `sentenceIds`.

@@ -13,6 +13,7 @@
     "subtitle",
     "source",
     "sequence",
+    "blocks",
     "sentences",
     "words",
     "grammar"
@@ -45,6 +46,15 @@
       "type": "array",
       "minItems": 1,
       "items": { "type": "string" }
+    },
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string" }
+      }
     },
     "sentences": {
       "type": "array",

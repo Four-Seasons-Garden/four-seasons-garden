@@ -48,6 +48,7 @@ export type JapaneseLearningLesson = {
   subtitle: string;
   source: JapaneseLessonSource;
   sequence: string[];
+  blocks: string[][];
   sentences: JapaneseSentence[];
   words: JapaneseWord[];
   grammar: JapaneseGrammar[];
