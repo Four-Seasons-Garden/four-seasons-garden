@@ -83,7 +83,7 @@ content/
 lib/music/learning.ts
 ```
 
-To add another lesson, copy the JSON shape in `content/learning/ja/kyoto/secret-base.json` and add a track lookup in `lib/music/learning.ts` using that track's `biomeId` and `youtubeId`. Keep sentence parts split into `{ "text": "漢字", "reading": "かな" }` objects so the UI can render ruby furigana above each kanji group. Give each sentence a stable `id` such as `s01`, then connect vocabulary and grammar with `sentenceIds` arrays. Clicking a word or grammar item uses those links to jump back to and highlight the matching sentence. Vocabulary order in the JSON is the default lesson order; the player can additionally sort it by Japanese 五十音順（あいうえお順）.
+To add another lesson, copy the JSON shape in `content/learning/ja/kyoto/secret-base.json` and add a track lookup in `lib/music/learning.ts` using that track's `biomeId` and `youtubeId`. Keep sentence parts split into `{ "text": "漢字", "reading": "かな" }` objects so the UI can render ruby furigana above each kanji group. Give each sentence a stable `id` such as `s01`, then connect vocabulary and grammar with `sentenceIds` arrays. The sentence view exposes those related vocabulary and grammar entries as clickable links; clicking a Japanese lyric segment or link opens and highlights the matching entry, while clicking an entry jumps back to its source sentence. Vocabulary order in the JSON is the default lesson order; the player can additionally sort it by Japanese 五十音順（あいうえお順）.
 
 When adding content:
 
