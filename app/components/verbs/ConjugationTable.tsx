@@ -8,6 +8,7 @@ import {
   FORM_BY_ID,
   conjugate,
   endingOf,
+  glossFor,
   type FormId,
   type Politeness,
   type Verb,
@@ -92,6 +93,7 @@ export function ConjugationTable({
                   <span className="verb-col-jp">
                     {echoesPlain ? "identical to plain" : meta?.japanese}
                   </span>
+                  <span className="verb-col-gloss">{meta?.gloss}</span>
                 </th>
               );
             })}
@@ -154,7 +156,7 @@ export function ConjugationTable({
                           aria-label={
                             isHidden
                               ? `Reveal ${FORM_BY_ID.get(formId)?.label} of ${verb.head}${verb.tail}`
-                              : `${cell.reading || "no such form"} — ${FORM_BY_ID.get(formId)?.label} of ${verb.head}${verb.tail}`
+                              : `${cell.reading || "no such form"} — ${glossFor(verb, formId)} — ${FORM_BY_ID.get(formId)?.label} of ${verb.head}${verb.tail}`
                           }
                           onClick={() => {
                             /* In practice mode the first click is the answer
@@ -169,6 +171,9 @@ export function ConjugationTable({
                           {cell.available
                             ? <JapaneseText parts={cell.parts} />
                             : <span className="verb-cell-gap">—</span>}
+                          {cell.available && (
+                            <span className="verb-cell-gloss">{glossFor(verb, formId)}</span>
+                          )}
                         </button>
                       </td>
                     );

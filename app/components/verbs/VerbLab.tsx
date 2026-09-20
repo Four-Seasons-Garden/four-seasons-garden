@@ -280,6 +280,25 @@ export function VerbLab() {
             open={openSections[section.id]}
             onToggle={() => toggleSection(section.id)}
           >
+            {forms.length < FORMS.length && (
+              /* The column chooser lives in the sidebar, which is easy to miss.
+                 Say out loud that there are more forms, next to the table that
+                 is not showing them. */
+              <p className="verb-column-hint">
+                <span>
+                  Showing <b>{forms.length}</b> of {FORMS.length} forms
+                </span>
+                <button type="button" onClick={() => update({ forms: FORMS.map((form) => form.id) })}>
+                  Show all twelve
+                </button>
+                {forms !== EXTENDED_FORMS && (
+                  <button type="button" onClick={() => update({ forms: EXTENDED_FORMS })}>
+                    Potential, volitional, passive…
+                  </button>
+                )}
+              </p>
+            )}
+
             <ConjugationTable
               verbs={verbsByGroup[section.id]}
               forms={forms}

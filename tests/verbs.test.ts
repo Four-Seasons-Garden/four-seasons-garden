@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  VERBS,
   VERB_BY_ID,
   conjugate,
+  glossFor,
   type FormId,
   type Politeness,
 } from "../lib/japanese/verbs.ts";
@@ -238,4 +240,50 @@ test("every cell's segments reassemble into the rendered form", () => {
       }
     }
   }
+});
+
+test("every form carries an English gloss", () => {
+  const forms: FormId[] = [...CORE, ...EXTENDED, "causativePassive"];
+  for (const verb of VERBS) {
+    for (const formId of forms) {
+      const gloss = glossFor(verb, formId);
+      assert.ok(gloss && gloss.trim().length > 0, `${verb.id} ${formId}`);
+      assert.ok(!gloss.includes("undefined"), `${verb.id} ${formId} → ${gloss}`);
+    }
+  }
+});
+
+test("glosses do not depend on politeness", () => {
+  /* 書きます and 書く mean the same thing in English; only the register differs,
+     and English does not mark it. */
+  for (const verb of VERBS) {
+    assert.equal(glossFor(verb, "nonpast"), verb.english.third);
+  }
+});
+
+test("the passive gloss respects transitivity", () => {
+  /* A naive "is <participle>" template turns 死なれる into "is died". */
+  assert.equal(glossFor(VERB_BY_ID.get("kaku")!, "passive"), "is written");
+  assert.equal(glossFor(VERB_BY_ID.get("taberu")!, "passive"), "is eaten");
+  assert.equal(glossFor(VERB_BY_ID.get("matsu")!, "passive"), "is waited for");
+  assert.equal(glossFor(VERB_BY_ID.get("shinu")!, "passive"), "have … die");
+  assert.equal(glossFor(VERB_BY_ID.get("kuru")!, "passive"), "have … come");
+  assert.equal(glossFor(VERB_BY_ID.get("kaeru")!, "passive"), "have … go home");
+});
+
+test("gloss templates read correctly for multi-word verbs", () => {
+  const kaeru = VERB_BY_ID.get("kaeru")!;
+  assert.equal(glossFor(kaeru, "negative"), "does not go home");
+  assert.equal(glossFor(kaeru, "potential"), "can go home");
+  assert.equal(glossFor(kaeru, "volitional"), "let's go home");
+  assert.equal(glossFor(kaeru, "past"), "went home");
+  assert.equal(glossFor(kaeru, "causativePassive"), "be made to go home");
+
+  const okiru = VERB_BY_ID.get("okiru")!;
+  assert.equal(glossFor(okiru, "nonpast"), "gets up");
+  assert.equal(glossFor(okiru, "conditional"), "if … gets up");
+
+  /* する borrows できる for the potential, and the gloss follows the meaning
+     rather than the form. */
+  assert.equal(glossFor(VERB_BY_ID.get("suru")!, "potential"), "can do");
 });

@@ -6,6 +6,7 @@ import {
   FORM_BY_ID,
   conjugate,
   familyOf,
+  glossFor,
   type Cell,
   type FormId,
   type Politeness,
@@ -126,8 +127,9 @@ export function CellDetail({
           <h4 className="verb-detail-title">
             {cell.available ? <JapaneseText parts={cell.parts} /> : <span className="verb-detail-gap">does not exist</span>}
           </h4>
+          {cell.available && <p className="verb-detail-english">{glossFor(verb, formId)}</p>}
           <p className="verb-detail-gloss">
-            <JapaneseText parts={dictionary.parts} /> — {verb.meaning} · {meta?.gloss}
+            <JapaneseText parts={dictionary.parts} /> — {verb.meaning} · {meta?.label} ({meta?.gloss})
           </p>
         </div>
         <button className="verb-detail-close" type="button" onClick={onClose} aria-label="Close details">

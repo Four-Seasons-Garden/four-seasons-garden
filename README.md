@@ -227,6 +227,25 @@ exact form was derived rather than showing prose stored beside it. Forms that do
 exist — polite conditional, polite imperative — come back with `available: false`
 carrying the reason and the construction to use instead.
 
+Every cell also carries an English gloss, built the same compositional way. A verb
+stores its principal parts, and each form owns one template, so a gloss exists for all
+eighteen verbs across all twelve forms without writing two hundred of them by hand:
+
+```ts
+english: { base: "write", third: "writes", past: "wrote", participle: "written" }
+potential: (e) => `can ${e.base}`          // 書ける  → can write
+passive:   (e) => `is ${e.participle}`     // 書かれる → is written
+```
+
+The one template that lies is the passive, which is why `english` carries
+`intransitive`. 死なれる is not "is died" — an intransitive verb's passive is the
+adversative one, so it glosses as "have … die" instead. `glossFor()` branches on that
+flag, and `tests/verbs.test.ts` pins both readings.
+
+Glosses ignore politeness, because English does not mark it: 書きます and 書く are both
+"writes". They render under each cell in Study density and vanish in Table, so the
+compact view stays a bare reference grid.
+
 Only `する` and `来る` are written out by hand; there is no rule to encode, which is
 what makes them irregular. `来る` stores a reading per form, because the kanji hides
 the こ / き / く shift that runs through its paradigm.
@@ -241,8 +260,10 @@ and reading it renders.
 ### Adding a verb
 
 1. Append it to `VERBS` in `lib/japanese/verbs.ts` with its `head` / `headReading` /
-   `tail` split and a `group`. Godan family grouping, all twelve forms, and the detail
-   card follow from that — there is no per-verb table to fill in.
+   `tail` split, a `group`, and its `english` principal parts. Godan family grouping,
+   all twelve forms, and all twelve glosses follow from that — there is no per-verb
+   table to fill in. Mark `intransitive: true` if the verb takes no direct object, or
+   its passive will gloss as nonsense.
 2. Add an example sentence under `VERB_EXAMPLES` in `lib/japanese/grammar.ts`, split
    into `{ "text": "漢字", "reading": "かな" }` parts like the lesson JSON above.
 3. Add a row to `tests/verbs.test.ts` if the verb demonstrates a rule no existing verb

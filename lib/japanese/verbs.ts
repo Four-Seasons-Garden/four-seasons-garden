@@ -36,6 +36,18 @@ export type Segment = {
   label: string;
 };
 
+/* English principal parts, so a gloss can be built for any form instead of
+   hand-writing one per verb per form. `intransitive` is here because the
+   passive is the one template that lies without it: 死なれる is not "is died",
+   it is the adversative "have someone die on you". */
+export type EnglishVerb = {
+  base: string;
+  third: string;
+  past: string;
+  participle: string;
+  intransitive?: boolean;
+};
+
 export type Verb = {
   id: string;
   /* dict === head + tail, reading === headReading + tail. Conjugation only ever
@@ -44,6 +56,7 @@ export type Verb = {
   headReading: string;
   tail: string;
   meaning: string;
+  english: EnglishVerb;
   group: VerbGroup;
   /* 行く is the one godan verb whose て/た ignores its ending. */
   soundException?: { te: string; ta: string };
@@ -178,32 +191,32 @@ export function endingOf(verb: Verb) {
 /* ─────────── The verbs ─────────── */
 
 export const VERBS: Verb[] = [
-  { id: "kaku", head: "書", headReading: "か", tail: "く", meaning: "to write", group: "godan" },
-  { id: "oyogu", head: "泳", headReading: "およ", tail: "ぐ", meaning: "to swim", group: "godan" },
-  { id: "hanasu", head: "話", headReading: "はな", tail: "す", meaning: "to speak", group: "godan",
+  { id: "kaku", head: "書", headReading: "か", tail: "く", meaning: "to write", english: { base: "write", third: "writes", past: "wrote", participle: "written" }, group: "godan" },
+  { id: "oyogu", head: "泳", headReading: "およ", tail: "ぐ", meaning: "to swim", english: { base: "swim", third: "swims", past: "swam", participle: "swum", intransitive: true }, group: "godan" },
+  { id: "hanasu", head: "話", headReading: "はな", tail: "す", meaning: "to speak", english: { base: "speak", third: "speaks", past: "spoke", participle: "spoken" }, group: "godan",
     notes: ["す-verbs are the one godan family whose causative-passive never contracts."] },
-  { id: "yomu", head: "読", headReading: "よ", tail: "む", meaning: "to read", group: "godan" },
-  { id: "shinu", head: "死", headReading: "し", tail: "ぬ", meaning: "to die", group: "godan",
+  { id: "yomu", head: "読", headReading: "よ", tail: "む", meaning: "to read", english: { base: "read", third: "reads", past: "read", participle: "read" }, group: "godan" },
+  { id: "shinu", head: "死", headReading: "し", tail: "ぬ", meaning: "to die", english: { base: "die", third: "dies", past: "died", participle: "died", intransitive: true }, group: "godan",
     notes: ["死ぬ is the only ぬ verb left in modern Japanese. Learn it and you have learned the entire ぬ row."] },
-  { id: "asobu", head: "遊", headReading: "あそ", tail: "ぶ", meaning: "to play", group: "godan" },
-  { id: "matsu", head: "待", headReading: "ま", tail: "つ", meaning: "to wait", group: "godan" },
-  { id: "kaeru", head: "帰", headReading: "かえ", tail: "る", meaning: "to go home", group: "godan",
+  { id: "asobu", head: "遊", headReading: "あそ", tail: "ぶ", meaning: "to play", english: { base: "play", third: "plays", past: "played", participle: "played", intransitive: true }, group: "godan" },
+  { id: "matsu", head: "待", headReading: "ま", tail: "つ", meaning: "to wait", english: { base: "wait", third: "waits", past: "waited", participle: "waited for" }, group: "godan" },
+  { id: "kaeru", head: "帰", headReading: "かえ", tail: "る", meaning: "to go home", english: { base: "go home", third: "goes home", past: "went home", participle: "gone home", intransitive: true }, group: "godan",
     notes: ["Ends in る but is godan: 帰らない, never 帰ない. The other common impostors are 入る, 走る, 知る, 切る, 要る."] },
-  { id: "kau", head: "買", headReading: "か", tail: "う", meaning: "to buy", group: "godan" },
-  { id: "iku", head: "行", headReading: "い", tail: "く", meaning: "to go", group: "godan",
+  { id: "kau", head: "買", headReading: "か", tail: "う", meaning: "to buy", english: { base: "buy", third: "buys", past: "bought", participle: "bought" }, group: "godan" },
+  { id: "iku", head: "行", headReading: "い", tail: "く", meaning: "to go", english: { base: "go", third: "goes", past: "went", participle: "gone", intransitive: true }, group: "godan",
     soundException: { te: "って", ta: "った" },
     notes: ["The one irregular godan verb. Its ending is く but its sound change is the っ one: 行って / 行った, never 行いて."] },
 
-  { id: "miru", head: "見", headReading: "み", tail: "る", meaning: "to see, to watch", group: "ichidan" },
-  { id: "okiru", head: "起", headReading: "お", tail: "きる", meaning: "to get up", group: "ichidan" },
-  { id: "kariru", head: "借", headReading: "か", tail: "りる", meaning: "to borrow", group: "ichidan" },
-  { id: "taberu", head: "食", headReading: "た", tail: "べる", meaning: "to eat", group: "ichidan" },
-  { id: "neru", head: "寝", headReading: "ね", tail: "る", meaning: "to sleep", group: "ichidan" },
-  { id: "oshieru", head: "教", headReading: "おし", tail: "える", meaning: "to teach", group: "ichidan" },
+  { id: "miru", head: "見", headReading: "み", tail: "る", meaning: "to see, to watch", english: { base: "see", third: "sees", past: "saw", participle: "seen" }, group: "ichidan" },
+  { id: "okiru", head: "起", headReading: "お", tail: "きる", meaning: "to get up", english: { base: "get up", third: "gets up", past: "got up", participle: "gotten up", intransitive: true }, group: "ichidan" },
+  { id: "kariru", head: "借", headReading: "か", tail: "りる", meaning: "to borrow", english: { base: "borrow", third: "borrows", past: "borrowed", participle: "borrowed" }, group: "ichidan" },
+  { id: "taberu", head: "食", headReading: "た", tail: "べる", meaning: "to eat", english: { base: "eat", third: "eats", past: "ate", participle: "eaten" }, group: "ichidan" },
+  { id: "neru", head: "寝", headReading: "ね", tail: "る", meaning: "to sleep", english: { base: "sleep", third: "sleeps", past: "slept", participle: "slept", intransitive: true }, group: "ichidan" },
+  { id: "oshieru", head: "教", headReading: "おし", tail: "える", meaning: "to teach", english: { base: "teach", third: "teaches", past: "taught", participle: "taught" }, group: "ichidan" },
 
-  { id: "suru", head: "", headReading: "", tail: "する", meaning: "to do", group: "irregular",
+  { id: "suru", head: "", headReading: "", tail: "する", meaning: "to do", english: { base: "do", third: "does", past: "did", participle: "done" }, group: "irregular",
     notes: ["Fuses with nouns to make verbs: 勉強する, 待ち合わせする, 電話する. Conjugate the する and the noun rides along."] },
-  { id: "kuru", head: "来", headReading: "く", tail: "る", meaning: "to come", group: "irregular",
+  { id: "kuru", head: "来", headReading: "く", tail: "る", meaning: "to come", english: { base: "come", third: "comes", past: "came", participle: "come", intransitive: true }, group: "irregular",
     notes: ["The reading shifts between こ, き and く across the paradigm while the kanji stays 来 — the writing hides the change, so track the furigana."] },
 ];
 
@@ -446,6 +459,28 @@ function irregularCell(verb: Verb, formId: FormId, politeness: Politeness): Cell
     reading,
   );
   return formId === "te" && politeness === "polite" ? { ...cell, sameAsPlain: true } : cell;
+}
+
+/* One template per form. Politeness is not a semantic difference in English —
+   書きます and 書く both gloss as "writes" — so a gloss depends only on the verb
+   and the form. */
+const GLOSS: Record<FormId, (english: EnglishVerb) => string> = {
+  nonpast: (e) => e.third,
+  negative: (e) => `does not ${e.base}`,
+  past: (e) => e.past,
+  pastNegative: (e) => `did not ${e.base}`,
+  te: (e) => `${e.base} and …`,
+  potential: (e) => `can ${e.base}`,
+  volitional: (e) => `let's ${e.base}`,
+  conditional: (e) => `if … ${e.third}`,
+  imperative: (e) => `${e.base}!`,
+  passive: (e) => (e.intransitive ? `have … ${e.base}` : `is ${e.participle}`),
+  causative: (e) => `make … ${e.base}`,
+  causativePassive: (e) => `be made to ${e.base}`,
+};
+
+export function glossFor(verb: Verb, formId: FormId) {
+  return GLOSS[formId](verb.english);
 }
 
 export function conjugate(verb: Verb, formId: FormId, politeness: Politeness): Cell {

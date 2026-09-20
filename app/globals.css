@@ -2779,6 +2779,34 @@ body {
   display: none;
 }
 
+.verb-column-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: -6px 0 14px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--verb-quiet);
+}
+
+.verb-column-hint b { color: #312518; font-weight: 500; }
+
+.verb-column-hint button {
+  padding: 5px 9px;
+  border: 1px solid rgba(63, 125, 128, .34);
+  border-radius: 999px;
+  background: rgba(63, 125, 128, .1);
+  color: #23504f;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: .1em;
+}
+
+.verb-column-hint button:hover { background: rgba(63, 125, 128, .2); }
+
 /* ── Tables ── */
 
 .verb-table-scroll {
@@ -2909,11 +2937,40 @@ body {
 
 .verb-cell {
   position: relative;
+  display: grid;
+  gap: 1px;
   padding: 9px 10px;
   font-size: 17.5px;
   line-height: 1.5;
   white-space: nowrap;
 }
+
+/* The English sits under every form in Study, and disappears in Table so the
+   compact view stays a bare reference grid. */
+.verb-cell-gloss,
+.verb-col-gloss {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: .06em;
+  line-height: 1.35;
+  color: var(--verb-quiet);
+  white-space: normal;
+}
+
+.verb-col-gloss {
+  display: block;
+  margin-top: 3px;
+  max-width: 15ch;
+  text-transform: none;
+  letter-spacing: .04em;
+  opacity: .75;
+}
+
+.verb-lab[data-density="compact"] .verb-cell-gloss,
+.verb-lab[data-density="compact"] .verb-col-gloss { display: none; }
+
+/* Practice mode hides the answer; the English would give it straight back. */
+.verb-cell[data-hidden="true"] .verb-cell-gloss { visibility: hidden; }
 
 .verb-row-button:hover,
 .verb-cell:hover {
@@ -3055,6 +3112,14 @@ body {
 }
 
 .verb-detail-gap { font-size: 22px; opacity: .42; font-style: italic; }
+
+.verb-detail-english {
+  margin: 6px 0 0;
+  font-family: var(--font-cormorant), serif;
+  font-size: 21px;
+  font-style: italic;
+  color: #23504f;
+}
 
 .verb-detail-gloss {
   margin: 5px 0 0;
