@@ -1,7 +1,8 @@
 # Four Seasons Garden
 
 A watercolor garden scene that re-skins itself by location and live weather, with a
-background music player and a Japanese lyric-study mode.
+background music player, a Japanese lyric-study mode, and an interactive reference for
+the Japanese verb system at `/pond`.
 
 The whole scene is inline SVG — cottage, greenhouse, stone path, vegetable patch,
 picket fence, and wildflower drifts, drawn with displacement-noise filters for the
@@ -51,15 +52,21 @@ app/
     SceneArt.tsx                # cottage, greenhouse, plants, fence, paper grain
     WeatherEffects.tsx          # rain, snow, blossoms, mist, aurora, rainbow, lightning
     LocationMusic.tsx           # player: playlist, YouTube embed, synced lyrics
-    JapaneseLearningModal.tsx   # lyric-study modal + furigana rendering
+    JapaneseLearningModal.tsx   # lyric-study modal
+    JapaneseText.tsx            # furigana rendering, shared by the modal and the Pond
+    verbs/                      # Pond verb reference (see below)
     AppShell.tsx, useBiomeWeather.ts
-  pond/  greenhouse/  nursery/  garden-sutra/
+  pond/                         # Japanese verb reference
+  greenhouse/  nursery/  garden-sutra/
   api/
     weather/                    # current + hourly reads, manual sync
     music/playlists/            # tracks from Supabase, falling back to defaults
     cron/                       # supabase-keepalive, weather-sync
 lib/
   constants/biomes.ts           # biome identity, palette (CSS vars), effects flags
+  japanese/verbs.ts             # verb data + conjugator — every form is derived
+  japanese/grammar.ts           # rules, example sentences, て-form patterns
+  japanese/verb-settings.ts     # Pond study settings, as an external store
   music/tracks.ts               # default playlists per biome
   music/learning.ts             # lesson types + track-to-lesson lookup
   music/japanese-text.ts        # furigana part matching, 五十音順 sorting
@@ -97,6 +104,10 @@ payoff of the `lib/` boundary: `japanese-text.ts` and `lrc.ts` are reachable fro
 a test precisely because they import nothing but types. Modules that reach for
 the `@/` alias at runtime (`weather/display.ts`) are not covered — Node does not
 read `tsconfig` paths.
+
+`lib/japanese/` stays testable for the same reason: it does use the `@/` alias, but
+only under `import type`, which is erased before Node ever resolves it. An `import`
+without `type` in those files would break `npm test` while leaving the build green.
 
 ### Biomes
 
@@ -178,6 +189,68 @@ is safe; reusing an old ID for a different meaning is not.
 > Lesson JSON imports widen literal fields to `string`, so `contentType` will not satisfy
 > the `LearningContentType` union on its own — `lib/music/learning.ts` asserts the type,
 > and `npm run validate:learning` is what actually guards the shape.
+
+## Japanese verb reference
+
+`/pond` renders the verb system — three classes, twelve forms, two registers — as one
+interactive table. Nothing in it is transcribed: `lib/japanese/verbs.ts` holds eighteen
+verbs and conjugates them on demand, so a cell and its explanation cannot drift apart.
+
+```text
+lib/japanese/
+  verbs.ts                      # verb data + conjugator; returns forms AND their pieces
+  grammar.ts                    # rules per (class x register x form), examples, patterns
+  verb-settings.ts              # study settings, read via useSyncExternalStore
+app/components/verbs/
+  VerbLab.tsx                   # sidebar controls, collapsible sections
+  ConjugationTable.tsx          # the table, family grouping, inline detail row
+  CellDetail.tsx                # derivation strip, rule, example sentences
+  BaseChart.tsx                 # the five godan bases
+  PatternSections.tsx           # て-form patterns, causative-passive
+```
+
+A verb is stored as `head` + `tail` (`書` + `く`) alongside `headReading` (`か`).
+Conjugation only ever rewrites `tail`, so the kanji and its furigana stay in sync
+without a second table to maintain.
+
+`conjugate()` returns the finished form **and** the segments it was built from:
+
+| Role | Meaning | Seen in |
+|---|---|---|
+| `stem` | the part that never moves | 書 in 書きます |
+| `base` | the kana-row swap godan verbs make | き in 書きます (い base) |
+| `sound` | the euphonic change behind past and て | いて in 書いて |
+| `suffix` | what is bolted on the end | ます in 書きます |
+
+Those segments are what the detail card draws, so clicking a cell explains how that
+exact form was derived rather than showing prose stored beside it. Forms that do not
+exist — polite conditional, polite imperative — come back with `available: false`
+carrying the reason and the construction to use instead.
+
+Only `する` and `来る` are written out by hand; there is no rule to encode, which is
+what makes them irregular. `来る` stores a reading per form, because the kanji hides
+the こ / き / く shift that runs through its paradigm.
+
+`tests/verbs.test.ts` encodes the reference conjugation tables verbatim and checks
+every cell against the conjugator, along with the invariants that are easy to break:
+the polite て column equals the plain one, 行く takes the っ sound change despite its
+く ending, ichidan potential and passive are the same string, the causative-passive
+contracts except after す, and every cell's segments reassemble into the exact form
+and reading it renders.
+
+### Adding a verb
+
+1. Append it to `VERBS` in `lib/japanese/verbs.ts` with its `head` / `headReading` /
+   `tail` split and a `group`. Godan family grouping, all twelve forms, and the detail
+   card follow from that — there is no per-verb table to fill in.
+2. Add an example sentence under `VERB_EXAMPLES` in `lib/japanese/grammar.ts`, split
+   into `{ "text": "漢字", "reading": "かな" }` parts like the lesson JSON above.
+3. Add a row to `tests/verbs.test.ts` if the verb demonstrates a rule no existing verb
+   covers (a new ending, or an exception).
+
+Irregular readings and sound-change exceptions are per-verb data, not new code:
+`soundException` overrides the て/た change (`行く`), and `notes` surfaces caveats in
+the detail card.
 
 ## Media and licensing
 

@@ -1712,17 +1712,13 @@ body {
   align-items: start;
 }
 
-.pond-grid {
-  grid-template-columns: minmax(220px, 280px) minmax(280px, .8fr) minmax(0, 1fr);
-}
 
 .nursery-grid {
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
 }
 
 .tool-sidebar,
-.tool-panel,
-.pond-stage {
+.tool-panel {
   border-radius: 8px;
   border: 1px solid rgba(62, 42, 24, .1);
   background: rgba(255, 250, 238, .58);
@@ -2156,47 +2152,6 @@ body {
 .greenhouse-preview span:nth-child(2) { width: 70%; height: 66%; right: -18%; bottom: -28%; }
 .greenhouse-preview span:nth-child(3) { width: 62px; height: 62px; right: 15%; top: 18%; }
 
-.pond-stage {
-  min-height: 380px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-
-.pond-orbit {
-  position: relative;
-  width: min(68vw, 360px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255,255,255,.38), transparent 18%),
-    radial-gradient(circle, rgba(88, 126, 132, .46), rgba(32, 70, 76, .52) 70%);
-  box-shadow: inset 0 -22px 48px rgba(18, 44, 50, .25), 0 24px 50px rgba(74, 52, 28, .16);
-}
-
-.pond-moon {
-  position: absolute;
-  width: 58px;
-  height: 58px;
-  right: 22%;
-  top: 18%;
-  border-radius: 50%;
-  background: #fff8d8;
-  box-shadow: 0 0 34px rgba(255, 248, 216, .68);
-}
-
-.pond-ripple {
-  position: absolute;
-  left: 50%;
-  top: 58%;
-  border: 1px solid rgba(255,255,255,.36);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.ripple-a { width: 48%; height: 18%; }
-.ripple-b { width: 66%; height: 24%; }
-.ripple-c { width: 82%; height: 32%; }
 
 .auth-form {
   display: grid;
@@ -2361,7 +2316,6 @@ body {
 
   .app-topbar,
   .tool-grid,
-  .pond-grid,
   .admin-grid {
     grid-template-columns: 1fr;
   }
@@ -2581,4 +2535,857 @@ body {
   .hud-mark .tag {
     letter-spacing: .24em;
   }
+}
+
+/* ─────────── Pond · Japanese verbs ─────────── */
+
+.verb-lab {
+  /* One hue per role in a derivation, so a colour always means the same thing:
+     what never moves, what slides along its kana row, what changes sound, what
+     is bolted on the end. */
+  --role-stem:   #6f5a42;
+  --role-base:   #3f7d80;
+  --role-sound:  #b4604a;
+  --role-suffix: #7c6a9c;
+
+  --verb-line:   rgba(62, 42, 24, .11);
+  --verb-quiet:  rgba(62, 42, 24, .55);
+  --verb-panel:  rgba(255, 250, 238, .58);
+
+  display: grid;
+  grid-template-columns: minmax(212px, 258px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.verb-lede {
+  max-width: 62ch;
+  margin: 0 0 18px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: color-mix(in oklch, #312518 82%, transparent);
+}
+
+/* Three still rings where the moon used to be — the pond, reduced to a rule. */
+.verb-ripple {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 26px;
+}
+
+.verb-ripple span {
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(63, 125, 128, .5), rgba(63, 125, 128, 0));
+}
+
+.verb-ripple span:nth-child(1) { width: 84px; }
+.verb-ripple span:nth-child(2) { width: 46px; opacity: .6; }
+.verb-ripple span:nth-child(3) { width: 20px; opacity: .35; }
+
+/* ── Sidebar ── */
+
+.verb-sidebar { gap: 18px; }
+
+.verb-control { display: grid; gap: 8px; }
+
+.verb-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(62, 42, 24, .07);
+}
+
+.verb-segmented button,
+.verb-preset-row button,
+.verb-form-chip,
+.verb-toggle,
+.verb-base-chip {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.verb-segmented button {
+  padding: 7px 6px;
+  border-radius: 7px;
+  font-size: 10px;
+  transition: background .16s ease, color .16s ease;
+}
+
+.verb-segmented button[aria-pressed="true"] {
+  background: #3f3325;
+  color: #fff6e4;
+}
+
+.verb-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.verb-preset-row button {
+  padding: 6px 9px;
+  border: 1px solid var(--verb-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .42);
+  font-size: 9px;
+}
+
+.verb-preset-row button:hover { background: rgba(255, 255, 255, .78); }
+
+.verb-form-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.verb-form-chip {
+  padding: 5px 8px;
+  border: 1px solid var(--verb-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .3);
+  font-size: 9px;
+  opacity: .5;
+  transition: opacity .16s ease, background .16s ease, border-color .16s ease;
+}
+
+.verb-form-chip[data-tier="extended"] { border-style: dashed; }
+
+.verb-form-chip[aria-pressed="true"] {
+  background: rgba(63, 125, 128, .16);
+  border-color: rgba(63, 125, 128, .42);
+  border-style: solid;
+  opacity: 1;
+}
+
+.verb-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--verb-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .32);
+  font-size: 9px;
+  text-align: left;
+}
+
+.verb-toggle[aria-pressed="true"] {
+  background: rgba(63, 125, 128, .14);
+  border-color: rgba(63, 125, 128, .38);
+}
+
+.verb-toggle-quiet { opacity: .68; text-transform: none; letter-spacing: .04em; }
+
+.verb-sidebar-note {
+  margin: 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--verb-line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--verb-quiet);
+}
+
+/* ── Sections ── */
+
+.verb-main { display: grid; gap: 16px; min-width: 0; }
+
+.verb-section {
+  border: 1px solid var(--verb-line);
+  border-radius: 10px;
+  background: var(--verb-panel);
+  box-shadow: 0 18px 44px rgba(74, 52, 28, .09);
+  overflow: hidden;
+}
+
+.verb-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 17px 19px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.verb-section-head:hover { background: rgba(255, 255, 255, .3); }
+
+.verb-section-heading { display: grid; gap: 5px; }
+
+.verb-section-eyebrow {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  opacity: .5;
+}
+
+.verb-section-title {
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(24px, 3.4vw, 33px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.verb-section-title em {
+  margin-left: 11px;
+  font-size: .5em;
+  font-style: normal;
+  letter-spacing: .06em;
+  opacity: .45;
+}
+
+.verb-section-chevron {
+  flex: none;
+  opacity: .45;
+  transition: transform .2s ease;
+}
+
+.verb-section[data-open="false"] .verb-section-chevron { transform: rotate(-90deg); }
+
+.verb-section-body {
+  padding: 0 19px 19px;
+  border-top: 1px solid var(--verb-line);
+  padding-top: 17px;
+}
+
+.verb-section-blurb {
+  max-width: 76ch;
+  margin: 0 0 16px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--verb-quiet);
+}
+
+.verb-lab[data-density="compact"] .verb-section-blurb,
+.verb-lab[data-density="compact"] .verb-family-blurb,
+.verb-lab[data-density="compact"] .verb-row-meaning,
+.verb-lab[data-density="compact"] .verb-col-jp,
+.verb-lab[data-density="compact"] .verb-bases-caption {
+  display: none;
+}
+
+/* ── Tables ── */
+
+.verb-table-scroll {
+  overflow-x: auto;
+  margin: 0 -19px;
+  padding: 0 19px;
+  scrollbar-width: thin;
+}
+
+.verb-table,
+.verb-base-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.verb-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 0 6px 9px;
+  border-bottom: 1px solid rgba(62, 42, 24, .18);
+  background: #f6ecd8;
+  text-align: left;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.verb-col-name {
+  display: block;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.verb-col-jp {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  letter-spacing: .04em;
+  opacity: .42;
+}
+
+.verb-table-corner {
+  left: 0;
+  z-index: 4 !important;
+  min-width: 132px;
+}
+
+/* The verb name stays put while the forms scroll past it. */
+.verb-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  padding: 0;
+  background: linear-gradient(90deg, #f6ecd8 84%, rgba(246, 236, 216, 0));
+  text-align: left;
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+.verb-family-row th {
+  padding: 19px 0 7px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-weight: 400;
+}
+
+.verb-family-name {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--role-sound);
+}
+
+.verb-family-change {
+  margin-left: 11px;
+  font-size: 14px;
+  letter-spacing: .04em;
+  opacity: .72;
+}
+
+.verb-family-blurb {
+  display: block;
+  max-width: 74ch;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--verb-quiet);
+}
+
+.verb-row-button,
+.verb-cell {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background .14s ease, border-color .14s ease;
+}
+
+.verb-row-button {
+  display: grid;
+  gap: 1px;
+  padding: 9px 10px 9px 2px;
+}
+
+.verb-row-jp {
+  font-size: 20px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.verb-row-meaning {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .48;
+}
+
+.verb-cell {
+  position: relative;
+  padding: 9px 10px;
+  font-size: 17.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.verb-row-button:hover,
+.verb-cell:hover {
+  background: rgba(255, 255, 255, .74);
+  border-color: var(--verb-line);
+}
+
+.verb-row-button:focus-visible,
+.verb-cell:focus-visible {
+  outline: 2px solid rgba(63, 125, 128, .5);
+  outline-offset: 1px;
+}
+
+.verb-row-button[aria-expanded="true"],
+.verb-cell[data-active="true"] {
+  background: rgba(63, 125, 128, .13);
+  border-color: rgba(63, 125, 128, .4);
+}
+
+.verb-cell[data-available="false"] { cursor: help; }
+.verb-cell-gap { opacity: .3; }
+
+.verb-table thead th[data-echo="true"] .verb-col-jp {
+  color: var(--role-base);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: .8;
+}
+
+.verb-row-flag {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(180, 96, 74, .14);
+  color: var(--role-sound);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 7.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+/* Practice mode: the answer is present but unreadable until you commit. */
+.verb-cell[data-hidden="true"] > .japanese-text,
+.verb-cell[data-hidden="true"] > .verb-cell-gap {
+  filter: blur(5px);
+  opacity: .45;
+  user-select: none;
+}
+
+/* Chromium paints ruby annotations outside the blur, so the reading has to be
+   hidden outright or practice mode gives the stem away. */
+.verb-cell[data-hidden="true"] rt { visibility: hidden; }
+
+.verb-cell[data-hidden="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  border: 1px dashed rgba(62, 42, 24, .22);
+}
+
+.verb-table tbody tr[data-open="true"] > .verb-row-head {
+  background: linear-gradient(90deg, #f4e7cd 84%, rgba(244, 231, 205, 0));
+}
+
+.verb-table td { padding: 0; vertical-align: middle; }
+
+.verb-table tbody tr + tr td,
+.verb-table tbody tr + tr .verb-row-head {
+  border-top: 1px solid rgba(62, 42, 24, .06);
+}
+
+.verb-table tbody tr.verb-detail-row td,
+.verb-table tbody tr.verb-detail-row + tr td,
+.verb-table tbody tr.verb-detail-row + tr .verb-row-head,
+.verb-family-row + tr td,
+.verb-family-row + tr .verb-row-head {
+  border-top: 0;
+}
+
+.verb-lab[data-density="compact"] .verb-row-button { padding-block: 5px; }
+.verb-lab[data-density="compact"] .verb-cell { padding-block: 5px; font-size: 16px; }
+.verb-lab[data-density="compact"] .verb-row-jp { font-size: 17px; }
+.verb-lab[data-furigana="false"] .verb-table rt,
+.verb-lab[data-furigana="false"] .verb-base-table rt { visibility: hidden; }
+
+/* ── Detail card ── */
+
+.verb-detail-row td { padding: 3px 0 13px; }
+
+.verb-detail {
+  /* Stays at the left edge of the scroll port rather than stretching to the
+     full width of a twelve-column table. */
+  position: sticky;
+  left: 0;
+  width: var(--verb-viewport, 100%);
+  max-width: 100%;
+  display: grid;
+  gap: 15px;
+  padding: 18px 19px 19px;
+  border: 1px solid rgba(63, 125, 128, .26);
+  border-left: 3px solid var(--role-base);
+  border-radius: 9px;
+  background: rgba(255, 253, 245, .92);
+  box-shadow: 0 12px 30px rgba(74, 52, 28, .1);
+}
+
+.verb-detail[data-available="false"] {
+  border-color: rgba(180, 96, 74, .3);
+  border-left-color: var(--role-sound);
+}
+
+.verb-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.verb-detail-eyebrow {
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+.verb-detail-jp { margin-left: 9px; letter-spacing: .06em; opacity: .7; }
+
+.verb-detail-title {
+  margin: 7px 0 0;
+  font-size: 31px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.verb-detail-gap { font-size: 22px; opacity: .42; font-style: italic; }
+
+.verb-detail-gloss {
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  color: var(--verb-quiet);
+}
+
+.verb-detail-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--verb-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .6);
+  color: inherit;
+  cursor: pointer;
+}
+
+.verb-detail-close:hover { background: #3f3325; color: #fff6e4; }
+
+/* ── Derivation strip ── */
+
+.verb-derivation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: 8px;
+  background: rgba(62, 42, 24, .045);
+}
+
+.verb-derivation-step { display: flex; align-items: center; gap: 4px; }
+.verb-derivation-arrow { flex: none; opacity: .3; }
+
+.verb-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 78px;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in oklch, var(--chip) 36%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--chip) 9%, rgba(255, 255, 255, .7));
+}
+
+.verb-chip[data-role="stem"]   { --chip: var(--role-stem); }
+.verb-chip[data-role="base"]   { --chip: var(--role-base); }
+.verb-chip[data-role="sound"]  { --chip: var(--role-sound); }
+.verb-chip[data-role="suffix"] { --chip: var(--role-suffix); }
+
+.verb-chip-kana { font-size: 21px; line-height: 1.5; }
+.verb-chip-kana em { font-style: normal; opacity: .35; }
+
+.verb-chip-role {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--chip);
+}
+
+.verb-chip-note {
+  max-width: 24ch;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--verb-quiet);
+}
+
+/* ── Rules, warnings, examples ── */
+
+.verb-rule { display: grid; gap: 6px; }
+
+.verb-rule-title {
+  margin: 0;
+  font-family: var(--font-cormorant), serif;
+  font-size: 20px;
+  font-style: italic;
+}
+
+.verb-rule-formula {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: rgba(62, 42, 24, .06);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+
+.verb-rule-body,
+.verb-note {
+  margin: 0;
+  max-width: 80ch;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: color-mix(in oklch, #312518 78%, transparent);
+}
+
+.verb-warnings {
+  display: grid;
+  gap: 6px;
+  margin: 3px 0 0;
+  padding: 0 0 0 15px;
+  list-style: none;
+}
+
+.verb-warnings li {
+  position: relative;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: color-mix(in oklch, #312518 76%, transparent);
+}
+
+.verb-warnings li::before {
+  content: "";
+  position: absolute;
+  left: -15px;
+  top: .62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--role-sound);
+}
+
+.verb-warnings-verb li::before { background: var(--role-stem); }
+
+.verb-gap-note {
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px;
+  border-radius: 8px;
+  background: rgba(180, 96, 74, .09);
+}
+
+.verb-gap-note p { margin: 0; font-size: 14px; line-height: 1.55; }
+.verb-gap-instead { color: var(--verb-quiet); }
+
+.verb-detail-examples {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.verb-example {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--verb-line);
+  background: rgba(255, 255, 255, .5);
+}
+
+.verb-example-label {
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: .48;
+}
+
+.verb-example-jp { margin: 3px 0 0; font-size: 18px; line-height: 1.7; }
+.verb-example-en { margin: 0; font-size: 13px; line-height: 1.5; color: var(--verb-quiet); }
+
+/* ── Five bases ── */
+
+.verb-bases { display: grid; gap: 24px; }
+
+.verb-bases-legend {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(auto-fit, minmax(244px, 1fr));
+  margin-bottom: 15px;
+}
+
+.verb-base-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--verb-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .34);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.verb-base-chip[aria-pressed="true"] {
+  background: rgba(63, 125, 128, .14);
+  border-color: rgba(63, 125, 128, .42);
+}
+
+.verb-base-chip-kana {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(62, 42, 24, .08);
+  font-family: var(--font-cormorant), serif;
+  font-size: 17px;
+}
+
+.verb-base-chip[aria-pressed="true"] .verb-base-chip-kana {
+  background: var(--role-base);
+  color: #fff6e4;
+}
+
+.verb-base-chip-text { display: grid; gap: 2px; min-width: 0; }
+
+.verb-base-chip-forms {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.verb-base-chip-example { font-size: 12.5px; opacity: .58; }
+
+.verb-base-table th,
+.verb-base-table td {
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(62, 42, 24, .07);
+  font-size: 17px;
+  font-weight: 400;
+  text-align: center;
+  transition: background .18s ease, color .18s ease;
+}
+
+.verb-base-table thead th {
+  border-bottom: 1px solid rgba(62, 42, 24, .18);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+}
+
+.verb-base-table tbody th {
+  width: 74px;
+  color: var(--verb-quiet);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 13px;
+}
+
+.verb-base-table [data-active="true"] {
+  background: rgba(63, 125, 128, .15);
+  color: #23504f;
+  font-weight: 500;
+}
+
+.verb-base-table thead th[data-active="true"] { background: var(--role-base); color: #fff6e4; }
+
+.verb-bases-caption {
+  max-width: 74ch;
+  margin: 13px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--verb-quiet);
+}
+
+.verb-subheading {
+  margin: 0 0 7px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+.verb-sound-grid {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+  margin-top: 13px;
+}
+
+.verb-sound-card {
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid var(--verb-line);
+  border-top: 2px solid var(--role-sound);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .44);
+}
+
+.verb-sound-endings { margin: 0; font-size: 19px; letter-spacing: .02em; }
+
+.verb-sound-change {
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  color: var(--role-sound);
+}
+
+.verb-sound-blurb { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--verb-quiet); }
+
+.verb-note-warn {
+  margin-top: 13px;
+  padding: 11px 13px;
+  border-radius: 8px;
+  background: rgba(180, 96, 74, .1);
+  font-size: 13.5px;
+}
+
+/* ── Pattern tables ── */
+
+.verb-pattern-table td { vertical-align: middle; }
+.verb-pattern-name { font-family: var(--font-geist-mono), monospace; font-size: 15px; }
+
+.verb-pattern-meaning { font-size: 14px; color: var(--verb-quiet); }
+.verb-cell-text { white-space: normal; font-size: 14px; }
+.verb-pattern-example .verb-cell { white-space: normal; }
+
+.verb-plain-cell { padding: 10px 10px; font-size: 16.5px; line-height: 1.5; }
+.verb-plain-cell[data-strong="true"] { color: var(--role-sound); font-weight: 500; }
+
+@media (max-width: 860px) {
+  .verb-lab {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .verb-sidebar { position: static; }
+  .verb-section-body { padding-inline: 14px; }
+  .verb-table-scroll { margin-inline: -14px; padding-inline: 14px; }
+  .verb-detail { padding: 15px; }
+  .verb-detail-title { font-size: 26px; }
+  .verb-bases-legend { grid-template-columns: 1fr; }
+  .verb-detail-examples { grid-template-columns: 1fr; }
 }
