@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
-import { JapaneseText } from "@/app/components/JapaneseText";
+import { JapaneseText } from "@/app/components/japanese/JapaneseText";
 import { CellDetail } from "./CellDetail";
 import {
   FAMILIES,

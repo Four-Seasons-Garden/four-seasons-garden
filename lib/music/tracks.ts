@@ -1,4 +1,4 @@
-import { BIOMES } from "@/lib/constants/biomes";
+import { BIOMES } from "@/lib/biomes";
 import { normalizeYouTubeUrl } from "@/lib/music/youtube";
 
 export type LocationTrack = {

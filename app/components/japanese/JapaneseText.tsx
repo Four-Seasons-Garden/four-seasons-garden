@@ -1,7 +1,7 @@
 "use client";
 
-import type { JapanesePart } from "@/lib/music/learning";
-import type { JapaneseTextLink } from "@/lib/music/japanese-text";
+import type { JapanesePart } from "@/lib/japanese/lesson";
+import type { JapaneseTextLink } from "@/lib/japanese/lesson-text";
 
 /* Renders furigana over each kanji group. Parts without a reading stay plain so
    particles remain visible beside the ruby text. */

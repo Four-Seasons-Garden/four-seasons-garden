@@ -43,19 +43,23 @@ CRON_SECRET=                    # set in Vercel; required by the cron routes whe
 
 ## Layout
 
+Two rules decide where anything goes:
+
+1. **Logic with no React coupling lives in `lib/`**, where it can be imported and
+   tested on its own. `app/` holds rendering.
+2. **Every directory is a domain, not a category.** There is no `utils/`, no
+   `constants/`, and no `helpers/` — a file sits with the feature it serves.
+
 ```text
 app/
-  page.tsx                      # scene, HUD chips, page composition
-  globals.css                   # watercolor CSS, biome palettes, animations, HUD + modal styles
-  layout.tsx                    # Cormorant Garamond (display) + Geist Mono (HUD labels)
+  page.tsx                      # the garden scene, HUD chips, page composition
+  layout.tsx                    # Cormorant Garamond (display) + Geist Mono (labels)
+  globals.css                   # watercolor CSS, biome palettes, animations, all page styles
   components/
-    SceneArt.tsx                # cottage, greenhouse, plants, fence, paper grain
-    WeatherEffects.tsx          # rain, snow, blossoms, mist, aurora, rainbow, lightning
-    LocationMusic.tsx           # player: playlist, YouTube embed, synced lyrics
-    JapaneseLearningModal.tsx   # lyric-study modal
-    JapaneseText.tsx            # furigana rendering, shared by the modal and the Pond
-    verbs/                      # Pond verb reference (see below)
-    AppShell.tsx, useBiomeWeather.ts
+    AppShell.tsx                # nav + heading chrome for the interior pages
+    scene/                      # SceneArt (cottage, plants, fence), WeatherEffects
+    music/                      # LocationMusic player, JapaneseLearningModal
+    japanese/                   # JapaneseText (furigana), verbs/ (the Pond, see below)
   pond/                         # Japanese verb reference
   greenhouse/  nursery/  garden-sutra/
   api/
@@ -63,33 +67,40 @@ app/
     music/playlists/            # tracks from Supabase, falling back to defaults
     cron/                       # supabase-keepalive, weather-sync
 lib/
-  constants/biomes.ts           # biome identity, palette (CSS vars), effects flags
-  japanese/verbs.ts             # verb data + conjugator — every form is derived
-  japanese/grammar.ts           # rules, example sentences, て-form patterns
-  japanese/verb-settings.ts     # Pond study settings, as an external store
-  music/tracks.ts               # default playlists per biome
-  music/learning.ts             # lesson types + track-to-lesson lookup
-  music/japanese-text.ts        # furigana part matching, 五十音順 sorting
-  music/lrc.ts                  # .lrc parsing, visible-lyric window
-  music/youtube.ts              # URL/id parsing, IFrame Player types + loader
+  biomes.ts                     # biome identity, palette (CSS vars), effects flags
+  japanese/
+    verbs.ts                    # verb data + conjugator — every form is derived
+    verb-grammar.ts             # rules, example sentences, て-form patterns
+    verb-settings.ts            # Pond study settings, as an external store
+    lesson.ts                   # lesson types + track-to-lesson lookup
+    lesson-text.ts              # furigana part matching, 五十音順 sorting
+  music/
+    tracks.ts                   # default playlists per biome
+    lrc.ts                      # .lrc parsing, visible-lyric window
+    youtube.ts                  # URL/id parsing, IFrame Player types + loader
+  weather/
+    open-meteo.ts               # forecast fetch + normalization
+    display.ts                  # weather signal/kind/intensity, formatters
+  ui/                           # useBiomeWeather, usePreciseClock, useSceneDraggable
+  supabase/                     # read client (browser) + service client (server)
   time/almanac.ts               # zoned clock, Chinese lunar almanac
-  weather/open-meteo.ts         # forecast fetch + normalization
-  weather/display.ts            # weather signal/kind/intensity, formatters
-  ui/useSceneDraggable.ts       # drag hook + localStorage persistence
-  ui/usePreciseClock.ts         # one-second clock
 content/learning/               # lesson JSON (see below)
+tests/                          # <domain>-<module>.test.ts, mirroring lib/
+scripts/validate-learning.mjs   # lesson JSON + cross-reference check
 supabase/migrations/            # schema + seed migrations
 tools/lyrics-transcriber/       # local-only Python transcription helper (gitignored)
 ```
 
-The split follows one rule: **anything with real logic and no React coupling
-belongs in `lib/`**, where it can be imported and tested on its own. `app/` holds
-the rendering. So `partIndexesForTerm` (which part of a line a vocabulary entry
-covers) and `kanaToGojuonKey` (kana sort order) live in `lib/music/japanese-text.ts`,
-while the component that renders furigana lives in `app/components/`.
+The `lib/japanese/` prefixes are load-bearing: `verb-*` is the Pond reference and
+`lesson-*` is the lyric-study content, two subsystems that share only the
+`JapanesePart` type. Sorting the directory groups them.
 
-Everything in `app/components/` is `"use client"`, as are the two hooks in
-`lib/ui/`. The page itself is a client component — the scene uses `useState` and
+So `partIndexesForTerm` (which part of a line a vocabulary entry covers) and
+`kanaToGojuonKey` (kana sort order) live in `lib/japanese/lesson-text.ts`, while the
+component that renders furigana lives in `app/components/japanese/`.
+
+Everything in `app/components/` is `"use client"`, as are the three hooks in
+`lib/ui/`. The root page is a client component — the scene uses `useState` and
 `useId`. The rest of `lib/` is plain TypeScript with no React import.
 
 ### Tests
@@ -100,7 +111,7 @@ directly, so a test imports `../lib/music/lrc.ts` with the extension included.
 `tests/` is excluded from `tsconfig.json` for that reason.
 
 This only works for modules with no runtime imports, which is the practical
-payoff of the `lib/` boundary: `japanese-text.ts` and `lrc.ts` are reachable from
+payoff of the `lib/` boundary: `lesson-text.ts` and `lrc.ts` are reachable from
 a test precisely because they import nothing but types. Modules that reach for
 the `@/` alias at runtime (`weather/display.ts`) are not covered — Node does not
 read `tsconfig` paths.
@@ -141,7 +152,7 @@ and cross-link behavior. The machine-readable contract is
 content/learning/
   lesson.schema.json             # shared JSON Schema for every lesson
   ja/kyoto/secret-base.json      # one file per song/article
-lib/music/learning.ts            # shared types + track-to-lesson lookup
+lib/japanese/lesson.ts           # shared types + track-to-lesson lookup
 ```
 
 Every lesson has:
@@ -179,7 +190,7 @@ IDs in the same lesson.
 1. Copy the nearest lesson into `content/learning/<language>/<biome>/<lesson-id>.json`.
 2. Set metadata and `source`. Use `contentType: "song"` for lyrics, `"article"` for reading material.
 3. Add the ordered `sequence` (including repeats), `blocks`, canonical sentences with furigana parts and translations, vocabulary, grammar, and reciprocal `sentenceIds`.
-4. Add one lookup branch in `lib/music/learning.ts` keyed on the track's `biomeId` and `youtubeId`.
+4. Add one lookup branch in `lib/japanese/lesson.ts` keyed on the track's `biomeId` and `youtubeId`.
 5. Open the lesson and test all three tabs — furigana alignment, 五十音順 sorting, sentence → entry and entry → sentence links, desktop and mobile.
 6. Run `npm run validate:learning`, then commit the JSON and the lookup change together.
 
@@ -187,7 +198,7 @@ Keep lesson, sentence, vocabulary, and grammar IDs stable after publishing. Reor
 is safe; reusing an old ID for a different meaning is not.
 
 > Lesson JSON imports widen literal fields to `string`, so `contentType` will not satisfy
-> the `LearningContentType` union on its own — `lib/music/learning.ts` asserts the type,
+> the `LearningContentType` union on its own — `lib/japanese/lesson.ts` asserts the type,
 > and `npm run validate:learning` is what actually guards the shape.
 
 ## Japanese verb reference
@@ -199,9 +210,9 @@ verbs and conjugates them on demand, so a cell and its explanation cannot drift 
 ```text
 lib/japanese/
   verbs.ts                      # verb data + conjugator; returns forms AND their pieces
-  grammar.ts                    # rules per (class x register x form), examples, patterns
+  verb-grammar.ts               # rules per (class x register x form), examples, patterns
   verb-settings.ts              # study settings, read via useSyncExternalStore
-app/components/verbs/
+app/components/japanese/verbs/
   VerbLab.tsx                   # sidebar controls, collapsible sections
   ConjugationTable.tsx          # the table, family grouping, inline detail row
   CellDetail.tsx                # derivation strip, rule, example sentences
@@ -264,7 +275,7 @@ and reading it renders.
    all twelve forms, and all twelve glosses follow from that — there is no per-verb
    table to fill in. Mark `intransitive: true` if the verb takes no direct object, or
    its passive will gloss as nonsense.
-2. Add an example sentence under `VERB_EXAMPLES` in `lib/japanese/grammar.ts`, split
+2. Add an example sentence under `VERB_EXAMPLES` in `lib/japanese/verb-grammar.ts`, split
    into `{ "text": "漢字", "reading": "かな" }` parts like the lesson JSON above.
 3. Add a row to `tests/verbs.test.ts` if the verb demonstrates a rule no existing verb
    covers (a new ending, or an exception).

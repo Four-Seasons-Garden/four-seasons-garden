@@ -8,7 +8,7 @@ import {
   type FormId,
   type Politeness,
 } from "../lib/japanese/verbs.ts";
-import { causativePassivePair } from "../lib/japanese/grammar.ts";
+import { causativePassivePair } from "../lib/japanese/verb-grammar.ts";
 
 const CORE: FormId[] = ["nonpast", "negative", "past", "pastNegative", "te"];
 const EXTENDED: FormId[] = ["potential", "volitional", "conditional", "imperative", "passive", "causative"];

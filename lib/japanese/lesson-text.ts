@@ -3,7 +3,7 @@ import type {
   JapanesePart,
   JapaneseSentence,
   JapaneseWord,
-} from "@/lib/music/learning";
+} from "@/lib/japanese/lesson";
 
 export type JapaneseTextLink = {
   label: string;

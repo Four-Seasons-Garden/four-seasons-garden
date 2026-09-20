@@ -16,7 +16,7 @@ import {
   DEFAULT_BIOME_ID,
   getBiome,
   type Biome,
-} from "@/lib/constants/biomes";
+} from "@/lib/biomes";
 import type {
   BiomeWeatherPayload,
   LiveBiomeWeather,
@@ -39,15 +39,15 @@ import {
 } from "@/lib/weather/display";
 import { usePreciseClock } from "@/lib/ui/usePreciseClock";
 import { useSceneDraggable } from "@/lib/ui/useSceneDraggable";
-import { LocationMusic } from "./components/LocationMusic";
+import { LocationMusic } from "./components/music/LocationMusic";
 import {
   SkyHills, Cottage, StonePath, Greenhouse, WildflowerDrift,
   VegetablePatch, PicketFence, PaperGrain,
   IconSun, IconCloudSun, IconCloudRain, IconCloudLightning, IconSnowflake,
-} from "./components/SceneArt";
+} from "./components/scene/SceneArt";
 import {
   Rain, Snow, Blossoms, Mist, Aurora, Rainbow, LightningFlash,
-} from "./components/WeatherEffects";
+} from "./components/scene/WeatherEffects";
 
 /* Convert biome.theme.palette → inline style with CSS vars on .scene root */
 function paletteStyle(biome: Biome): CSSProperties {

@@ -1,5 +1,5 @@
-import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/constants/biomes";
-import { createSupabaseReadClient } from "@/utils/supabase/server";
+import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/biomes";
+import { createSupabaseReadClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 

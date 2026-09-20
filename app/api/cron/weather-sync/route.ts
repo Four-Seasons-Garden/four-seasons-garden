@@ -1,5 +1,5 @@
 import { fetchBiomeHourlyWeather } from "@/lib/weather/open-meteo";
-import { createSupabaseAdminClient } from "@/utils/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 

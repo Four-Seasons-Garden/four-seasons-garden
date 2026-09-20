@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local-only Python helper; it vendors JS inside its virtualenv, which is
+    // not ours to lint. Gitignored, so CI never sees it either way.
+    "tools/**",
   ]),
 ]);
 

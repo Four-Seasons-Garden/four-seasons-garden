@@ -5,7 +5,7 @@ import {
   partIndexesForTerm,
   sentencePartLinks,
   wordSearchForms,
-} from "../lib/music/japanese-text.ts";
+} from "../lib/japanese/lesson-text.ts";
 
 /* Generic fixtures — not lesson content. */
 const parts = [

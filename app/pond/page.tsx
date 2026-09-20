@@ -1,5 +1,5 @@
 import { AppShell } from "@/app/components/AppShell";
-import { VerbLab } from "@/app/components/verbs/VerbLab";
+import { VerbLab } from "@/app/components/japanese/verbs/VerbLab";
 
 export const metadata = {
   title: "Pond — Japanese Verbs",

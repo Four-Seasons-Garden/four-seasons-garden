@@ -6,7 +6,7 @@
    Rules resolve most-specific-first, so a shared rule can be written once under
    an `any` key and overridden only where a group actually behaves differently. */
 
-import type { JapanesePart } from "@/lib/music/learning";
+import type { JapanesePart } from "@/lib/japanese/lesson";
 import type { FormId, Politeness, Verb, VerbGroup } from "@/lib/japanese/verbs";
 
 export type Example = { parts: JapanesePart[]; translation: string };

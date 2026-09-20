@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, X } from "lucide-react";
-import { JapaneseText } from "@/app/components/JapaneseText";
+import { JapaneseText } from "@/app/components/japanese/JapaneseText";
 import {
   FORM_BY_ID,
   conjugate,
@@ -12,7 +12,7 @@ import {
   type Politeness,
   type Verb,
 } from "@/lib/japanese/verbs";
-import { FORM_EXAMPLES, VERB_EXAMPLES, ruleFor, type Example } from "@/lib/japanese/grammar";
+import { FORM_EXAMPLES, VERB_EXAMPLES, ruleFor, type Example } from "@/lib/japanese/verb-grammar";
 
 const GROUP_LABEL: Record<Verb["group"], string> = {
   godan: "Godan · 五段",

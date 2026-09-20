@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/app/components/AppShell";
-import { useBiomeWeather, useTicker } from "@/app/components/useBiomeWeather";
+import { useBiomeWeather } from "@/lib/ui/useBiomeWeather";
+import { usePreciseClock } from "@/lib/ui/usePreciseClock";
 import {
   formatCelsius,
   formatClock,
@@ -14,7 +15,7 @@ import {
   formatTemperaturePair,
   formatWindPair,
 } from "@/lib/weather/display";
-import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/constants/biomes";
+import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/biomes";
 
 const RANGES = [
   { id: "day", label: "Day" },
@@ -682,7 +683,7 @@ export default function NurseryPage() {
   const [range, setRange] = useState<RangeId>("day");
   const { weather, status, error } = useBiomeWeather();
   const { payload, status: hourlyStatus } = useHourlyWeather(selectedId, range);
-  const now = useTicker();
+  const now = usePreciseClock();
   const biome = useMemo(() => getBiome(selectedId), [selectedId]);
   const selectedWeather = weather[selectedId];
   const timezone = selectedWeather?.resolvedLocation.timezone ?? biome.timezone;

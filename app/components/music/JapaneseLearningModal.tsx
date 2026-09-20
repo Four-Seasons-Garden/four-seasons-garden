@@ -8,15 +8,15 @@ import type {
   JapaneseLearningLesson,
   JapaneseSentence,
   JapaneseWord,
-} from "@/lib/music/learning";
+} from "@/lib/japanese/lesson";
 import {
   japaneseGrammarKey,
   japaneseWordKey,
   kanaToGojuonKey,
   sentencePartLinks,
-} from "@/lib/music/japanese-text";
+} from "@/lib/japanese/lesson-text";
 import type { LocationTrack } from "@/lib/music/tracks";
-import { JapaneseText } from "./JapaneseText";
+import { JapaneseText } from "../japanese/JapaneseText";
 
 /* A sentence ID is not unique in the rendered list — a chorus line repeats.
    Occurrence index is what identifies one rendered row. */

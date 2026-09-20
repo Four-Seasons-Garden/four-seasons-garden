@@ -1,4 +1,4 @@
-import { BIOMES } from "@/lib/constants/biomes";
+import { BIOMES } from "@/lib/biomes";
 
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 

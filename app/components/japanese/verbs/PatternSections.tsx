@@ -2,8 +2,8 @@
 
 import { Fragment, useState } from "react";
 import { X } from "lucide-react";
-import { JapaneseText } from "@/app/components/JapaneseText";
-import { TE_PATTERNS, causativePassivePair } from "@/lib/japanese/grammar";
+import { JapaneseText } from "@/app/components/japanese/JapaneseText";
+import { TE_PATTERNS, causativePassivePair } from "@/lib/japanese/verb-grammar";
 import { VERBS, conjugate } from "@/lib/japanese/verbs";
 
 export function TePatternTable() {

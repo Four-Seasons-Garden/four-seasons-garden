@@ -1,3 +1,7 @@
+/* Four Seasons Garden — the lyric/article lesson model.
+   Shapes the JSON under content/learning/ and looks a lesson up from the
+   track playing. The verb reference next door shares only JapanesePart. */
+
 import secretBaseLesson from "@/content/learning/ja/kyoto/secret-base.json";
 
 export type LearningContentType = "song" | "article";

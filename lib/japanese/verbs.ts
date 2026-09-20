@@ -6,7 +6,7 @@
    the pieces it was built from (stem, kana base, suffix), which is what the
    detail view shows. Irregulars are the only hand-written paradigms. */
 
-import type { JapanesePart } from "@/lib/music/learning";
+import type { JapanesePart } from "@/lib/japanese/lesson";
 
 export type VerbGroup = "godan" | "ichidan" | "irregular";
 export type Politeness = "plain" | "polite";

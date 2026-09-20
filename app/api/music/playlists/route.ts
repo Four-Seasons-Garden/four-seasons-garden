@@ -6,7 +6,7 @@ import {
   type LocationTrackRow,
 } from "@/lib/music/tracks";
 import { normalizeYouTubeUrl, parseYouTubeId } from "@/lib/music/youtube";
-import { createSupabaseAdminClient, createSupabaseReadClient } from "@/utils/supabase/server";
+import { createSupabaseAdminClient, createSupabaseReadClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 

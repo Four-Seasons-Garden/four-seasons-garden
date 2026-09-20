@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@/app/components/AppShell";
-import { formatTemperature, useBiomeWeather } from "@/app/components/useBiomeWeather";
-import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/constants/biomes";
+import { useBiomeWeather } from "@/lib/ui/useBiomeWeather";
+import { formatTemperature } from "@/lib/weather/display";
+import { BIOMES, DEFAULT_BIOME_ID, getBiome } from "@/lib/biomes";
 
 export default function GreenhousePage() {
   const [selectedId, setSelectedId] = useState(DEFAULT_BIOME_ID);

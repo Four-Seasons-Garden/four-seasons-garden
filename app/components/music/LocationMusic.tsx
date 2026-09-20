@@ -4,7 +4,7 @@ import { BookOpen, FastForward, Pause, Play, Repeat, Repeat1, Rewind } from "luc
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { getJapaneseLearningLesson } from "@/lib/music/learning";
+import { getJapaneseLearningLesson } from "@/lib/japanese/lesson";
 import type { LocationTrack } from "@/lib/music/tracks";
 import {
   activeLyricIndex,

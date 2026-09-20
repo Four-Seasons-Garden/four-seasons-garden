@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppShell } from "@/app/components/AppShell";
-import { BIOMES, DEFAULT_BIOME_ID } from "@/lib/constants/biomes";
+import { BIOMES, DEFAULT_BIOME_ID } from "@/lib/biomes";
 import type { MusicByBiome, StoredLocationTrack } from "@/lib/music/tracks";
-import { supabase } from "@/utils/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 const ADMIN_EMAIL = "rxyan2@wm.edu";
 

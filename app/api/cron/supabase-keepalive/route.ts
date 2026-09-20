@@ -1,4 +1,4 @@
-import { createSupabaseReadClient } from "@/utils/supabase/server";
+import { createSupabaseReadClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
