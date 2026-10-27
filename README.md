@@ -21,7 +21,7 @@ npm run dev          # http://localhost:3000
 | Script | Purpose |
 |---|---|
 | `npm run dev` | Dev server |
-| `npm run build` | Production build (**this** typechecks — `dev` does not) |
+| `npm run build` | Production build (**this** typechecks — `dev` does not); Vercel's build. Locally, use `node scripts/next-local.mjs build` (see Environment) |
 | `npm run start` | Serve a production build |
 | `npm run typecheck` | `tsc --noEmit` — the check `dev` skips |
 | `npm test` | Unit tests for the pure `lib/` modules |
@@ -30,7 +30,10 @@ npm run dev          # http://localhost:3000
 
 ### Environment
 
-Copy the Supabase values into `.env.local`:
+The local credential file lives outside the working copy, in
+`~/.secrets/four-seasons/.env.local` (folder mode 700, file mode 600; owner,
+2026-10-27). Never move it back into the project, and never print or commit it.
+Put the Supabase values there:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
@@ -40,6 +43,20 @@ WEATHER_SYNC_ADMIN_EMAILS=      # comma-separated, gates manual weather sync
 WEATHER_SYNC_SECRET=            # optional shared secret for /api/weather/sync
 CRON_SECRET=                    # set in Vercel; required by the cron routes when present
 ```
+
+Next.js only reads `.env*` files from the project folder, so `npm run dev` and
+`npm run start` go through `scripts/next-local.mjs`, which puts this file's
+values into the environment and then starts Next. Values already in
+`process.env` win over `.env*` files
+(https://nextjs.org/docs/app/guides/environment-variables, read 2026-10-27).
+Variables set in your shell win over the file. Without the file, both still run
+and Next falls back to a `.env.local` in the project folder, if there is one.
+
+`npm run build` is left alone, because it is Vercel's build, and Vercel uses the
+values set in the Vercel project, not this file. The build needs the Supabase
+values: without them, prerendering `/garden-sutra` fails ("supabaseUrl is
+required"). So a local plain `npm run build` fails; build locally with
+`node scripts/next-local.mjs build`, then `npm run start`.
 
 ## Layout
 
