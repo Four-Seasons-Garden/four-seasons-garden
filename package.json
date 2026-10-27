@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/next-local.mjs dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/next-local.mjs start",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/*.test.ts\"",
     "lint": "eslint",
